@@ -92,7 +92,6 @@ namespace pal
 
       ~LabelPosition() { delete nextPart; }
 
-
       /**
        * \brief Is the labelposition in the bounding-box ? (intersect or inside????)
        *
@@ -129,7 +128,10 @@ namespace pal
       double getDistanceToPoint( double xp, double yp ) const;
 
       /** Returns true if this label crosses the specified line */
-      bool isBorderCrossingLine( PointSet* line ) const;
+      bool crossesLine( PointSet* line ) const;
+
+      /** Returns true if this label crosses the boundary of the specified polygon */
+      bool crossesBoundary( PointSet* polygon ) const;
 
       /** Returns number of intersections with polygon (testing border and center) */
       int getNumPointsInPolygon( PointSet* polygon ) const;
@@ -163,14 +165,28 @@ namespace pal
       /** Return pointer to layer's name. used for stats */
       QString getLayerName() const;
 
-      /**
-       * \brief get the position geographical cost
-       * \return geographical cost
+      /** Returns the candidate label position's geographical cost.
+       * @see setCost
        */
-      double getCost() const;
+      double cost() const { return mCost; }
 
-      /** Modify candidate's cost */
-      void setCost( double newCost ) { cost = newCost; }
+      /** Sets the candidate label position's geographical cost.
+       * @param newCost new cost for position
+       * @see cost
+      */
+      void setCost( double newCost ) { mCost = newCost; }
+
+      /** Sets whether the position is marked as conflicting with an obstacle feature.
+       * @param conflicts set to true to mark candidate as being in conflict
+       * @note This method applies to all label parts for the candidate position.
+       * @see conflictsWithObstacle
+       */
+      void setConflictsWithObstacle( bool conflicts );
+
+      /** Returns whether the position is marked as conflicting with an obstacle feature.
+       * @see setConflictsWithObstacle
+       */
+      bool conflictsWithObstacle() const { return mHasObstacleConflict; }
 
       /** Make sure the cost is less than 1 */
       void validateCost();
@@ -250,7 +266,7 @@ namespace pal
     protected:
 
       int id;
-      double cost;
+
       FeaturePart *feature;
 
       // bug # 1 (maxence 10/23/2008)
@@ -276,6 +292,10 @@ namespace pal
 
       bool isInConflictSinglePart( LabelPosition* lp );
       bool isInConflictMultiPart( LabelPosition* lp );
+
+    private:
+      double mCost;
+      bool mHasObstacleConflict;
 
   };
 

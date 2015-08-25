@@ -6275,17 +6275,17 @@ void QgisApp::editPaste( QgsMapLayer *destinationLayer )
   QgsFeatureList features;
   if ( mMapCanvas->mapSettings().hasCrsTransformEnabled() )
   {
-    features = clipboard()->transformedCopyOf( pasteVectorLayer->crs(), pasteVectorLayer->pendingFields() );
+    features = clipboard()->transformedCopyOf( pasteVectorLayer->crs(), pasteVectorLayer->fields() );
   }
   else
   {
-    features = clipboard()->copyOf( pasteVectorLayer->pendingFields() );
+    features = clipboard()->copyOf( pasteVectorLayer->fields() );
   }
   int nTotalFeatures = features.count();
 
   QHash<int, int> remap;
   const QgsFields &fields = clipboard()->fields();
-  QgsAttributeList pkAttrList = pasteVectorLayer->pendingPkAttributesList();
+  QgsAttributeList pkAttrList = pasteVectorLayer->pkAttributeList();
   for ( int idx = 0; idx < fields.count(); ++idx )
   {
     int dst = pasteVectorLayer->fieldNameIndex( fields[idx].name() );
@@ -6295,7 +6295,7 @@ void QgisApp::editPaste( QgsMapLayer *destinationLayer )
     remap.insert( idx, dst );
   }
 
-  int dstAttrCount = pasteVectorLayer->pendingFields().count();
+  int dstAttrCount = pasteVectorLayer->fields().count();
 
   QgsFeatureList::iterator featureIt = features.begin();
   while ( featureIt != features.end() )
