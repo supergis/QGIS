@@ -249,6 +249,7 @@ void QgsFieldsProperties::setRow( int row, int idx, const QgsField& field )
     QWidget* expressionWidget = new QWidget;
     expressionWidget->setLayout( new QHBoxLayout );
     QToolButton* editExpressionButton = new QToolButton;
+    editExpressionButton->setProperty( "Index", mLayer->fields().fieldOriginIndex( idx ) );
     editExpressionButton->setIcon( QgsApplication::getThemeIcon( "/mIconExpression.svg" ) );
     connect( editExpressionButton, SIGNAL( clicked() ), this, SLOT( updateExpression() ) );
     expressionWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
@@ -668,7 +669,11 @@ void QgsFieldsProperties::updateExpression()
 
   const QString exp = mLayer->expressionField( index );
 
-  QgsExpressionBuilderDialog dlg( mLayer, exp );
+  QgsExpressionContext context;
+  context << QgsExpressionContextUtils::globalScope()
+  << QgsExpressionContextUtils::projectScope();
+
+  QgsExpressionBuilderDialog dlg( mLayer, exp, 0, "generic", context );
 
   if ( dlg.exec() )
   {

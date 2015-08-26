@@ -53,23 +53,6 @@
 
 namespace pal
 {
-
-  void geosError( const char *fmt, ... )
-  {
-    va_list list;
-    va_start( list, fmt );
-    vfprintf( stderr, fmt, list );
-    va_end( list );
-  }
-
-  void geosNotice( const char *fmt, ... )
-  {
-    va_list list;
-    va_start( list, fmt );
-    vfprintf( stdout, fmt, list );
-    va_end( list );
-  }
-
   GEOSContextHandle_t geosContext()
   {
     return QgsGeometry::getGEOSHandler();
@@ -403,6 +386,7 @@ namespace pal
 
     if ( isCancelled() )
     {
+      qDeleteAll( *fFeats );
       delete fFeats;
       delete prob;
       delete obstacles;
@@ -481,6 +465,7 @@ namespace pal
     {
       if ( isCancelled() )
       {
+        qDeleteAll( *fFeats );
         delete fFeats;
         delete prob;
         delete obstacles;

@@ -23,6 +23,7 @@
 #include <QSet>
 #include <QList>
 #include <QStringList>
+#include <QFont>
 
 #include "qgis.h"
 #include "qgsmaplayer.h"
@@ -39,7 +40,9 @@ class QImage;
 
 class QgsAbstractGeometrySimplifier;
 class QgsAttributeAction;
+class QgsConditionalLayerStyles;
 class QgsCoordinateTransform;
+class QgsCurveV2;
 class QgsDiagramLayerSettings;
 class QgsDiagramRendererV2;
 class QgsEditorWidgetWrapper;
@@ -64,6 +67,7 @@ class QgsPointV2;
 
 typedef QList<int> QgsAttributeList;
 typedef QSet<int> QgsAttributeIds;
+
 
 /**
  * This is an abstract base class for any elements of a drag and drop form.
@@ -355,6 +359,8 @@ protected:
   /** Subset of fields to use from joined layer. null = use all fields*/
   QSharedPointer<QStringList> joinFieldsSubset;
 };
+
+
 
 /** \ingroup core
  * Represents a vector layer which manages a vector based data sets.
@@ -1165,6 +1171,14 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer
        6 layer not editable */
     int addRing( const QList<QgsPoint>& ring );
 
+    /** Adds a ring to polygon/multipolygon features (takes ownership)
+            @return
+            0 in case of success
+            1 problem with feature type
+            2 ring not closed
+            6 layer not editable*/
+    int addRing( QgsCurveV2* ring );
+
     /** Adds a new part polygon to a multipart feature
      @return
        0 in case of success,
@@ -1176,6 +1190,8 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer
        6 if selected geometry not found
        7 layer not editable */
     int addPart( const QList<QgsPoint>& ring );
+
+    int addPart( QgsCurveV2* ring );
 
     /** Translates feature by dx, dy
        @param featureId id of the feature to translate
@@ -1749,6 +1765,15 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer
      */
     bool simplifyDrawingCanbeApplied( const QgsRenderContext& renderContext, QgsVectorSimplifyMethod::SimplifyHint simplifyHint ) const;
 
+    /**
+     * @brief Return the conditional styles that are set for this layer. Style information is
+     * used to render conditional formatting in the attribute table.
+     * @return Return a QgsConditionalLayerStyles object holding the conditional attribute
+     * style information. Style information is generic and can be used for anything.
+     * @note added in QGIS 2.12
+     */
+    QgsConditionalLayerStyles *conditionalStyles() const;
+
   public slots:
     /**
      * Select feature by its ID
@@ -1951,6 +1976,7 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer
      */
     void writeCustomSymbology( QDomElement& element, QDomDocument& doc, QString& errorMessage ) const;
 
+
   private slots:
     void onRelationsLoaded();
     void onJoinedFieldsChanged();
@@ -2000,6 +2026,8 @@ class CORE_EXPORT QgsVectorLayer : public QgsMapLayer
     void readSldLabeling( const QDomNode& node );
 
   private:                       // Private attributes
+
+    QgsConditionalLayerStyles * mConditionalStyles;
 
     /** Pointer to data provider derived from the abastract base class QgsDataProvider */
     QgsVectorDataProvider *mDataProvider;

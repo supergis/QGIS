@@ -2,6 +2,7 @@
 typedef QList<int> QgsAttributeList;
 typedef QSet<int> QgsAttributeIds;
 
+
 class QgsAttributeEditorElement : QObject
 {
 %TypeHeaderCode
@@ -1240,6 +1241,15 @@ class QgsVectorLayer : QgsMapLayer
      *  @note added in 2.2
      */
     bool simplifyDrawingCanbeApplied( const QgsRenderContext& renderContext, QgsVectorSimplifyMethod::SimplifyHint simplifyHint ) const;
+
+    /**
+     * @brief Return the conditional styles that are set for this layer. Style information is
+     * used to render conditional formatting in the attribute table.
+     * @return Return a QgsConditionalLayerStyles object holding the conditional attribute
+     * style information. Style information is generic and can be used for anything.
+     * @note added in QGIS 2.12
+     */
+    QgsConditionalLayerStyles *conditionalStyles() const;
 
   public slots:
     /**

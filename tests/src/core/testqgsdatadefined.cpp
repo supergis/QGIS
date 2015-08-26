@@ -19,7 +19,8 @@
 #include <QSettings>
 #include <QSharedPointer>
 
-#include <qgsdatadefined.h>
+#include "qgsdatadefined.h"
+#include "qgsapplication.h"
 
 /** \ingroup UnitTests
  * Unit tests for QgsDataDefined
@@ -49,12 +50,13 @@ class TestQgsDataDefined: public QObject
 
 void TestQgsDataDefined::initTestCase()
 {
-
+  QgsApplication::init();
+  QgsApplication::initQgis();
 }
 
 void TestQgsDataDefined::cleanupTestCase()
 {
-
+  QgsApplication::exitQgis();
 }
 
 void TestQgsDataDefined::init()
@@ -95,7 +97,7 @@ void TestQgsDataDefined::create()
 void TestQgsDataDefined::copy()
 {
   QgsDataDefined original( true, true, QString( "sqrt(2)" ), QString( "field" ) );
-  original.prepareExpression( NULL );
+  original.prepareExpression();
   QgsDataDefined copy( original );
   QVERIFY( copy == original );
 

@@ -38,8 +38,10 @@
 #include "qgis.h" //for globals
 #include "qgsapplication.h"
 #include "qgsclipper.h"
+#include "qgsconditionalstyle.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgscoordinatetransform.h"
+#include "qgscurvev2.h"
 #include "qgsdatasourceuri.h"
 #include "qgsexpressionfieldbuffer.h"
 #include "qgsfeature.h"
@@ -79,6 +81,7 @@
 #include "qgssymbologyv2conversion.h"
 #include "qgspallabeling.h"
 #include "qgssimplifymethod.h"
+#include "qgsexpressioncontext.h"
 
 #include "diagram/qgsdiagram.h"
 
@@ -146,6 +149,7 @@ QgsVectorLayer::QgsVectorLayer( QString vectorLayerPath,
     , mEditCommandActive( false )
 {
   mActions = new QgsAttributeAction( this );
+  mConditionalStyles = new QgsConditionalLayerStyles();
 
   // if we're given a provider type, try to create and bind one to this layer
   if ( ! mProviderKey.isEmpty() )
@@ -182,10 +186,12 @@ QgsVectorLayer::~QgsVectorLayer()
   delete mCache;
   delete mLabel;
   delete mDiagramLayerSettings;
+  delete mDiagramRenderer;
 
   delete mActions;
 
   delete mRendererV2;
+  delete mConditionalStyles;
 }
 
 QString QgsVectorLayer::storageType() const
@@ -343,7 +349,7 @@ void QgsVectorLayer::drawLabels( QgsRenderContext& rendererContext )
       QgsFeature fet;
       while ( fit.nextFeature( fet ) )
       {
-        if ( mRendererV2->willRenderFeature( fet ) )
+        if ( mRendererV2->willRenderFeature( fet, rendererContext ) )
         {
           bool sel = mSelectedFeatureIds.contains( fet.id() );
           mLabel->renderLabel( rendererContext, fet, sel, 0 );
@@ -716,12 +722,17 @@ bool QgsVectorLayer::countSymbolFeatures( bool showProgress )
   // Renderer (rule based) may depend on context scale, with scale is ignored if 0
   QgsRenderContext renderContext;
   renderContext.setRendererScale( 0 );
+  renderContext.expressionContext() << QgsExpressionContextUtils::globalScope()
+  << QgsExpressionContextUtils::projectScope()
+  << QgsExpressionContextUtils::layerScope( this );
+
   mRendererV2->startRender( renderContext, fields() );
 
   QgsFeature f;
   while ( fit.nextFeature( f ) )
   {
-    QgsSymbolV2List featureSymbolList = mRendererV2->originalSymbolsForFeature( f );
+    renderContext.expressionContext().setFeature( f );
+    QgsSymbolV2List featureSymbolList = mRendererV2->originalSymbolsForFeature( f, renderContext );
     for ( QgsSymbolV2List::iterator symbolIt = featureSymbolList.begin(); symbolIt != featureSymbolList.end(); ++symbolIt )
     {
       mSymbolFeatureCountMap[*symbolIt] += 1;
@@ -890,6 +901,11 @@ bool QgsVectorLayer::simplifyDrawingCanbeApplied( const QgsRenderContext& render
   return false;
 }
 
+QgsConditionalLayerStyles* QgsVectorLayer::conditionalStyles() const
+{
+  return mConditionalStyles;
+}
+
 QgsFeatureIterator QgsVectorLayer::getFeatures( const QgsFeatureRequest& request )
 {
   if ( !mDataProvider )
@@ -1036,6 +1052,27 @@ int QgsVectorLayer::addRing( const QList<QgsPoint>& ring )
   return utils.addRing( ring );
 }
 
+int QgsVectorLayer::addRing( QgsCurveV2* ring )
+{
+  if ( !mEditBuffer || !mDataProvider )
+  {
+    return 6;
+  }
+
+  if ( !ring )
+  {
+    return 1;
+  }
+
+  if ( !ring->isClosed() )
+  {
+    delete ring; return 2;
+  }
+
+  QgsVectorLayerEditUtils utils( this );
+  return utils.addRing( ring );
+}
+
 int QgsVectorLayer::addPart( const QList<QgsPoint> &points )
 {
   if ( !mEditBuffer || !mDataProvider )
@@ -1058,6 +1095,27 @@ int QgsVectorLayer::addPart( const QList<QgsPoint> &points )
   return utils.addPart( points, *mSelectedFeatureIds.constBegin() );
 }
 
+int QgsVectorLayer::addPart( QgsCurveV2* ring )
+{
+  if ( !mEditBuffer || !mDataProvider )
+    return 7;
+
+  //number of selected features must be 1
+
+  if ( mSelectedFeatureIds.size() < 1 )
+  {
+    QgsDebugMsg( "Number of selected features <1" );
+    return 4;
+  }
+  else if ( mSelectedFeatureIds.size() > 1 )
+  {
+    QgsDebugMsg( "Number of selected features >1" );
+    return 5;
+  }
+
+  QgsVectorLayerEditUtils utils( this );
+  return utils.addPart( ring, *mSelectedFeatureIds.constBegin() );
+}
 
 int QgsVectorLayer::translateFeature( QgsFeatureId featureId, double dx, double dy )
 {
@@ -1314,6 +1372,7 @@ bool QgsVectorLayer::readXml( const QDomNode& layer_node )
   }
 
   readStyleManager( layer_node );
+
 
   setLegend( QgsMapLayerLegend::defaultVectorLegend( this ) );
 
@@ -1758,6 +1817,8 @@ bool QgsVectorLayer::readSymbology( const QDomNode& node, QString& errorMessage 
     mAttributeEditorElements.append( attributeEditorWidget );
   }
 
+  conditionalStyles()->readXml( node );
+
   return true;
 }
 
@@ -1998,6 +2059,8 @@ bool QgsVectorLayer::writeSymbology( QDomNode& node, QDomDocument& doc, QString&
 
   // add attribute actions
   mActions->writeXML( node, doc );
+
+  mConditionalStyles->writeXml( node, doc );
 
   return true;
 }
@@ -3152,13 +3215,19 @@ QList<QVariant> QgsVectorLayer::getValues( const QString &fieldOrExpression, boo
   QList<QVariant> values;
 
   QScopedPointer<QgsExpression> expression;
+  QgsExpressionContext context;
+
   int attrNum = fieldNameIndex( fieldOrExpression );
 
   if ( attrNum == -1 )
   {
     // try to use expression
     expression.reset( new QgsExpression( fieldOrExpression ) );
-    if ( expression->hasParserError() || !expression->prepare( fields() ) )
+    context << QgsExpressionContextUtils::globalScope()
+    << QgsExpressionContextUtils::projectScope()
+    << QgsExpressionContextUtils::layerScope( this );
+
+    if ( expression->hasParserError() || !expression->prepare( &context ) )
     {
       ok = false;
       return values;
@@ -3191,8 +3260,16 @@ QList<QVariant> QgsVectorLayer::getValues( const QString &fieldOrExpression, boo
   // create list of non-null attribute values
   while ( fit.nextFeature( f ) )
   {
-    QVariant v = expression ? expression->evaluate( f ) : f.attribute( attrNum );
-    values << v;
+    if ( expression )
+    {
+      context.setFeature( f );
+      QVariant v = expression->evaluate( &context );
+      values << v;
+    }
+    else
+    {
+      values << f.attribute( attrNum );
+    }
   }
   ok = true;
   return values;

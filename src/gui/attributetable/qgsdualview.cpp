@@ -45,6 +45,8 @@ QgsDualView::QgsDualView( QWidget* parent )
 {
   setupUi( this );
 
+  mConditionalFormatWidget->hide();
+
   mPreviewActionMapper = new QSignalMapper( this );
 
   mPreviewColumnsMenu = new QMenu( this );
@@ -68,6 +70,8 @@ void QgsDualView::init( QgsVectorLayer* layer, QgsMapCanvas* mapCanvas, const Qg
   initLayerCache( layer, !request.filterRect().isNull() );
   initModels( mapCanvas, request );
 
+  mConditionalFormatWidget->setLayer( layer );
+
   mTableView->setModel( mFilterModel );
   mFeatureList->setModel( mFeatureListModel );
   mAttributeForm = new QgsAttributeForm( layer, QgsFeature(), mEditorContext );
@@ -84,6 +88,9 @@ void QgsDualView::init( QgsVectorLayer* layer, QgsMapCanvas* mapCanvas, const Qg
     mFeatureList->setDisplayExpression( mDisplayExpression );
   else
     columnBoxInit();
+
+  // This slows down load of the attribute table heaps and uses loads of memory.
+  //mTableView->resizeColumnsToContents();
 
   mFeatureList->setEditSelection( QgsFeatureIds() << mFeatureListModel->idxToFid( mFeatureListModel->index( 0, 0 ) ) );
 }
@@ -234,6 +241,8 @@ void QgsDualView::initModels( QgsMapCanvas* mapCanvas, const QgsFeatureRequest& 
   connect( mMasterModel, SIGNAL( progress( int, bool & ) ), this, SLOT( progress( int, bool & ) ) );
   connect( mMasterModel, SIGNAL( finished() ), this, SLOT( finished() ) );
 
+  connect( mConditionalFormatWidget, SIGNAL( rulesUpdated( QString ) ), mMasterModel, SLOT( fieldConditionalStyleChanged( QString ) ) );
+
   mMasterModel->loadLayer();
 
   mFilterModel = new QgsAttributeTableFilterModel( mapCanvas, mMasterModel, mMasterModel );
@@ -273,10 +282,21 @@ bool QgsDualView::saveEditChanges()
   return mAttributeForm->save();
 }
 
+void QgsDualView::openConditionalStyles()
+{
+  mConditionalFormatWidget->setVisible( !mConditionalFormatWidget->isVisible() );
+  mConditionalFormatWidget->viewRules();
+}
+
 void QgsDualView::previewExpressionBuilder()
 {
   // Show expression builder
-  QgsExpressionBuilderDialog dlg( mLayerCache->layer(), mFeatureList->displayExpression(), this );
+  QgsExpressionContext context;
+  context << QgsExpressionContextUtils::globalScope()
+  << QgsExpressionContextUtils::projectScope()
+  << QgsExpressionContextUtils::layerScope( mLayerCache->layer() );
+
+  QgsExpressionBuilderDialog dlg( mLayerCache->layer(), mFeatureList->displayExpression(), this, "generic", context );
   dlg.setWindowTitle( tr( "Expression based preview" ) );
   dlg.setExpressionText( mFeatureList->displayExpression() );
 
