@@ -552,6 +552,9 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, QWidget * parent, 
     QMessageBox::critical( this, tr( "Private qgis.db" ), dbError );
   }
 
+  // Create the themes folder for the user
+  QgsApplication::createThemeFolder();
+
   mSplash->showMessage( tr( "Reading settings" ), Qt::AlignHCenter | Qt::AlignBottom );
   qApp->processEvents();
 
@@ -588,12 +591,12 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, QWidget * parent, 
   mCentralContainer->insertWidget( 0, mMapCanvas );
   mCentralContainer->insertWidget( 1, mWelcomePage );
 
-  qobject_cast<QGridLayout *>( centralWidget->layout() )->addWidget( mCentralContainer, 0, 0, 2, 1 );
+  centralLayout->addWidget( mCentralContainer, 0, 0, 2, 1 );
 
   connect( mMapCanvas, SIGNAL( layersChanged() ), this, SLOT( showMapCanvas() ) );
-  connect( this, SIGNAL( newProject() ), this, SLOT( showMapCanvas() ) );
 
   mCentralContainer->setCurrentIndex( 1 );
+
 
   // a bar to warn the user with non-blocking messages
   mInfoBar = new QgsMessageBar( centralWidget );
@@ -848,6 +851,7 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, QWidget * parent, 
   mMapCanvas->clearExtentHistory(); // reset zoomnext/zoomlast
   mLastComposerId = 0;
 
+
   // Show a nice tip of the day
   if ( settings.value( QString( "/qgis/showTips%1" ).arg( QGis::QGIS_VERSION_INT / 100 ), true ).toBool() )
   {
@@ -882,6 +886,7 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, QWidget * parent, 
   // request notification of FileOpen events (double clicking a file icon in Mac OS X Finder)
   // should come after fileNewBlank to ensure project is properly set up to receive any data source files
   QgsApplication::setFileOpenEventReceiver( this );
+
 
 #ifdef ANDROID
   toggleFullScreen();
@@ -1029,6 +1034,8 @@ QgisApp::~QgisApp()
   delete mMapTools.mSplitParts;
   delete mMapTools.mSvgAnnotation;
   delete mMapTools.mTextAnnotation;
+  delete mMapTools.mCircularStringCurvePoint;
+  delete mMapTools.mCircularStringRadius;
 
   delete mpMaptip;
 
@@ -1039,6 +1046,7 @@ QgisApp::~QgisApp()
   delete mComposerManager;
 
   delete mVectorLayerTools;
+  delete mWelcomePage;
 
   deletePrintComposers();
   removeAnnotationItems();
@@ -1148,7 +1156,7 @@ void QgisApp::readSettings()
   QStringList oldRecentProjects = settings.value( "/UI/recentProjectsList" ).toStringList();
   settings.remove( "/UI/recentProjectsList" );
 
-  Q_FOREACH( const QString& project, oldRecentProjects )
+  Q_FOREACH ( const QString& project, oldRecentProjects )
   {
     QgsWelcomePageItemsModel::RecentProjectData data;
     data.path = project;
@@ -1160,7 +1168,7 @@ void QgisApp::readSettings()
   settings.beginGroup( "/UI/recentProjects" );
   QStringList projectKeys = settings.childGroups();
 
-  Q_FOREACH( const QString& key, projectKeys )
+  Q_FOREACH ( const QString& key, projectKeys )
   {
     QgsWelcomePageItemsModel::RecentProjectData data;
     settings.beginGroup( key );
@@ -2738,7 +2746,7 @@ void QgisApp::updateRecentProjectPaths()
 {
   mRecentProjectsMenu->clear();
 
-  Q_FOREACH( const QgsWelcomePageItemsModel::RecentProjectData& recentProject, mRecentProjects )
+  Q_FOREACH ( const QgsWelcomePageItemsModel::RecentProjectData& recentProject, mRecentProjects )
   {
     QAction* action = mRecentProjectsMenu->addAction( QString( "%1 (%2)" ).arg( recentProject.title ).arg( recentProject.path ) );
     action->setEnabled( QFile::exists(( recentProject.path ) ) );
@@ -2807,7 +2815,7 @@ void QgisApp::saveRecentProjectPath( QString projectPath, bool savePreviewImage 
   int idx = 0;
 
   // Persist the list
-  Q_FOREACH( const QgsWelcomePageItemsModel::RecentProjectData& recentProject, mRecentProjects )
+  Q_FOREACH ( const QgsWelcomePageItemsModel::RecentProjectData& recentProject, mRecentProjects )
   {
     ++idx;
     settings.beginGroup( QString( "/UI/recentProjects/%1" ).arg( idx ) );
@@ -3927,12 +3935,15 @@ void QgisApp::fileOpenAfterLaunch()
   // what type of project to auto-open
   int projOpen = settings.value( "/qgis/projOpenAtLaunch", 0 ).toInt();
 
-  // get path of project file to open, or was attempted
-  QString projPath = QString();
   if ( projOpen == 0 ) // welcome page
   {
+    connect( this, SIGNAL( newProject() ), this, SLOT( showMapCanvas() ) );
     return;
   }
+
+  // get path of project file to open, or was attempted
+  QString projPath;
+
   if ( projOpen == 1 && mRecentProjects.size() > 0 ) // most recent project
   {
     projPath = mRecentProjects.at( 0 ).path;
