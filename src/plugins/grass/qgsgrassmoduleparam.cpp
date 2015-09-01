@@ -200,6 +200,268 @@ QList<QDomNode> QgsGrassModuleParam::nodesByType( QDomElement descDomElement, ST
 }
 
 /********************** QgsGrassModuleOption *************************/
+
+QgsGrassModuleOption::QgsGrassModuleOption( QgsGrassModule *module, QString key,
+    QDomElement &qdesc, QDomElement &gdesc, QDomNode &gnode,
+    bool direct, QWidget * parent )
+    : QgsGrassModuleGroupBoxItem( module, key, qdesc, gdesc, gnode, direct, parent )
+    , mControlType( NoControl )
+    , mValueType( String )
+    , mOutputType( None )
+    , mHaveLimits( false )
+    , mMin( INT_MAX )
+    , mMax( INT_MIN )
+    , mComboBox( 0 )
+    , mIsOutput( false )
+    , mValidator( 0 )
+    , mLayout( 0 )
+    , mUsesRegion( false )
+{
+  QgsDebugMsg( "called." );
+  setSizePolicy( QSizePolicy::MinimumExpanding, QSizePolicy::Minimum );
+
+  if ( mHidden )
+    hide();
+
+  mLayout = new QVBoxLayout();
+
+  // Is it output?
+  QDomNode promptNode = gnode.namedItem( "gisprompt" );
+  if ( !promptNode.isNull() )
+  {
+    QDomElement promptElem = promptNode.toElement();
+    QString element = promptElem.attribute( "element" );
+    QString age = promptElem.attribute( "age" );
+
+    if ( age == "new" )
+    {
+      mOutputElement = element;
+      mIsOutput = true;
+
+      if ( element == "vector" )
+      {
+        mOutputType = Vector;
+      }
+      else if ( element == "cell" )
+      {
+        mOutputType = Raster;
+      }
+    }
+  }
+
+  // String without options
+  if ( !mHidden )
+  {
+    QDomElement gelem = gnode.toElement();
+
+    // Output option may have missing gisprompt if output may be both vector and raster according to other options (e.g. v.kernel)
+    // outputType qgm attribute allows to force output type
+
+    // Predefined values ?
+    QDomNode valuesNode = gnode.namedItem( "values" );
+    QDomElement valuesElem = valuesNode.toElement(); // null if valuesNode is null
+
+    if ( !valuesNode.isNull() && valuesNode.childNodes().count() > 1 )
+    {
+      setLayout( mLayout );
+      // predefined values -> ComboBox or CheckBox
+
+      // one or many?
+      if ( gelem.attribute( "multiple" ) == "yes" )
+      {
+        mControlType = CheckBoxes;
+      }
+      else
+      {
+        mControlType = ComboBox;
+        mComboBox = new QComboBox( this );
+        mLayout->addWidget( mComboBox );
+      }
+
+      // List of values to be excluded
+      QStringList exclude = qdesc.attribute( "exclude" ).split( ',', QString::SkipEmptyParts );
+
+      QDomNode valueNode = valuesElem.firstChild();
+
+      while ( !valueNode.isNull() )
+      {
+        QDomElement valueElem = valueNode.toElement();
+
+        if ( !valueElem.isNull() && valueElem.tagName() == "value" )
+        {
+
+          QDomNode n = valueNode.namedItem( "name" );
+          if ( !n.isNull() )
+          {
+            QDomElement e = n.toElement();
+            QString val = e.text().trimmed();
+
+            if ( exclude.contains( val ) == 0 )
+            {
+              n = valueNode.namedItem( "description" );
+              QString desc;
+              if ( !n.isNull() )
+              {
+                e = n.toElement();
+                desc = e.text().trimmed();
+              }
+              else
+              {
+                desc = val;
+              }
+              desc.replace( 0, 1, desc.left( 1 ).toUpper() );
+
+              if ( mControlType == ComboBox )
+              {
+                mComboBox->addItem( desc );
+                if ( mAnswer.length() > 0 && desc == mAnswer )
+                {
+                  mComboBox->setCurrentIndex( mComboBox->count() - 1 );
+                }
+              }
+              else
+              {
+                QgsGrassModuleCheckBox *cb = new QgsGrassModuleCheckBox( desc, this );
+                mCheckBoxes.push_back( cb );
+                mLayout->addWidget( cb );
+              }
+
+              mValues.push_back( val );
+            }
+          }
+        }
+
+        valueNode = valueNode.nextSibling();
+      }
+    }
+    else // No values
+    {
+      // Line edit
+      mControlType = LineEdit;
+
+      // Output option may have missing gisprompt if output may be both vector and raster according to other options (e.g. v.kernel)
+      // outputType qgm attribute allows to force output type
+      QgsDebugMsg( "outputType = " + qdesc.attribute( "outputType" ) );
+      if ( qdesc.hasAttribute( "outputType" ) )
+      {
+        QString outputType = qdesc.attribute( "outputType" );
+        mIsOutput = true;
+        if ( outputType == "vector" )
+        {
+          mOutputElement = "vector";
+          mOutputType = Vector;
+        }
+        else if ( outputType == "raster" )
+        {
+          mOutputElement = "cell";
+          mOutputType = Raster;
+        }
+        else
+        {
+          mErrors << tr( "Unknown outputType" ) + " : " + outputType;
+        }
+      }
+
+      if ( gelem.attribute( "type" ) == "integer" )
+      {
+        mValueType = Integer;
+      }
+      else if ( gelem.attribute( "type" ) == "float" )
+      {
+        mValueType = Double;
+      }
+
+      QStringList minMax;
+      if ( valuesNode.childNodes().count() == 1 )
+      {
+        QDomNode valueNode = valuesElem.firstChild();
+
+        QDomNode n = valueNode.namedItem( "name" );
+        if ( !n.isNull() )
+        {
+          QDomElement e = n.toElement();
+          QString val = e.text().trimmed();
+          minMax = val.split( "-" );
+          if ( minMax.size() == 2 )
+          {
+            mHaveLimits = true;
+            mMin = minMax.at( 0 ).toDouble();
+            mMax = minMax.at( 1 ).toDouble();
+          }
+        }
+      }
+
+      QDomNode keydescNode = gnode.namedItem( "keydesc" );
+      if ( !keydescNode.isNull() )
+      {
+        // fixed number of line edits
+        // Example:
+        // <keydesc>
+        //    <item order="1">rows</item>
+        //    <item order="2">columns</item>
+        // </keydesc>
+
+        QDomNodeList keydescs = keydescNode.childNodes();
+        for ( int k = 0; k < keydescs.count(); k++ )
+        {
+          QDomNode nodeItem = keydescs.at( k );
+          QString itemDesc = nodeItem.toElement().text().trimmed();
+          //QString itemDesc = nodeItem.firstChild().toText().data();
+          QgsDebugMsg( "keydesc item = " + itemDesc );
+
+          addLineEdit();
+        }
+
+        setLayout( mLayout );
+      }
+      else if ( gelem.attribute( "multiple" ) == "yes" )
+      {
+        // variable number of line edits
+        // add/delete buttons for multiple options
+        QHBoxLayout *l = new QHBoxLayout( this );
+        QVBoxLayout *vl = new QVBoxLayout();
+        l->insertLayout( -1, mLayout );
+        l->insertLayout( -1, vl );
+
+        // TODO: how to keep both buttons on the top?
+        QPushButton *b = new QPushButton( "+", this );
+        connect( b, SIGNAL( clicked() ), this, SLOT( addLineEdit() ) );
+        vl->addWidget( b, 0, Qt::AlignTop );
+
+        b = new QPushButton( "-", this );
+        connect( b, SIGNAL( clicked() ), this, SLOT( removeLineEdit() ) );
+        vl->addWidget( b, 0, Qt::AlignTop );
+
+        // Don't enable this, it makes the group box expanding
+        // vl->addStretch();
+      }
+      else
+      {
+        // only one line edit
+        addLineEdit();
+        setLayout( mLayout );
+      }
+    }
+  }
+
+  mUsesRegion = false;
+  QString region = qdesc.attribute( "region" );
+  if ( region.length() > 0 )
+  {
+    if ( region == "yes" )
+      mUsesRegion = true;
+  }
+  else
+  {
+    QgsDebugMsg( "\n\n\n\n**************************" );
+    QgsDebugMsg( QString( "isOutput = %1" ).arg( isOutput() ) );
+    QgsDebugMsg( QString( "mOutputType = %1" ).arg( mOutputType ) );
+    if ( isOutput() && mOutputType == Raster )
+      mUsesRegion = true;
+  }
+  QgsDebugMsg( QString( "mUsesRegion = %1" ).arg( mUsesRegion ) );
+}
+
 void QgsGrassModuleOption::addLineEdit()
 {
   QgsDebugMsg( "called." );
@@ -443,17 +705,15 @@ QStringList QgsGrassModuleOption::options()
 
 QString QgsGrassModuleOption::ready()
 {
-  QgsDebugMsg( "called." );
+  QgsDebugMsg( "key = " + key() );
 
   QString error;
 
-  if ( mControlType == LineEdit )
+  if ( value().isEmpty() && mRequired )
   {
-    if ( mLineEdits.at( 0 )->text().trimmed().length() == 0 && mRequired )
-    {
-      error.append( tr( "%1:&nbsp;missing value" ).arg( title() ) );
-    }
+    error.append( tr( "%1:&nbsp;missing value" ).arg( title() ) );
   }
+
   return error;
 }
 
@@ -1162,7 +1422,7 @@ void QgsGrassModuleGroupBoxItem::adjustTitle()
 /***************** QgsGrassModuleGdalInput *********************/
 
 QgsGrassModuleGdalInput::QgsGrassModuleGdalInput(
-  QgsGrassModule *module, int type, QString key, QDomElement &qdesc,
+  QgsGrassModule *module, Type type, QString key, QDomElement &qdesc,
   QDomElement &gdesc, QDomNode &gnode, bool direct, QWidget * parent )
     : QgsGrassModuleGroupBoxItem( module, key, qdesc, gdesc, gnode, direct, parent )
     , mType( type )
@@ -1432,7 +1692,7 @@ QString QgsGrassModuleGdalInput::ready()
 
 void QgsGrassModuleGdalInput::changed( int i )
 {
-  mLayerPassword->setEnabled( i < mUri.size() && mUri[i].startsWith( "PG:" ) && !mUri[i].contains( "password=" ) );
+  mLayerPassword->setEnabled( i < mUri.size() && mUri.value( i ).startsWith( "PG:" ) && !mUri.value( i ).contains( "password=" ) );
 }
 
 QgsGrassModuleGdalInput::~QgsGrassModuleGdalInput()
@@ -1674,20 +1934,7 @@ QgsGrassModuleFile::QgsGrassModuleFile(
     mType = Directory;
   }
 
-  if ( !qdesc.attribute( "filters" ).isNull() )
-  {
-    mFilters = qdesc.attribute( "filters" ).split( ";;" );
-
-    if ( mFilters.size() > 0 )
-    {
-      QRegExp rx( ".*\\( *..([^ )]*).*" );
-      QString ext;
-      if ( rx.indexIn( mFilters.at( 0 ) ) == 0 )
-      {
-        mSuffix = rx.cap( 1 );
-      }
-    }
-  }
+  mFilters = qdesc.attribute( "filters" );
 
   mFileOption = qdesc.attribute( "fileoption" );
 
@@ -1737,7 +1984,7 @@ void QgsGrassModuleFile::browse()
     else
       path = QFileInfo( path ).absolutePath();
 
-    QStringList files = QFileDialog::getOpenFileNames( this, 0, path );
+    QStringList files = QFileDialog::getOpenFileNames( this, 0, path, mFilters );
     if ( files.isEmpty() )
       return;
 
@@ -1756,7 +2003,7 @@ void QgsGrassModuleFile::browse()
     else if ( mType == Directory )
       selectedFile = QFileDialog::getExistingDirectory( this, 0, selectedFile );
     else
-      selectedFile = QFileDialog::getOpenFileName( this, 0, selectedFile );
+      selectedFile = QFileDialog::getOpenFileName( this, 0, selectedFile, mFilters );
 
     lastDir = QFileInfo( selectedFile ).absolutePath();
 
@@ -1766,7 +2013,7 @@ void QgsGrassModuleFile::browse()
 
 QString QgsGrassModuleFile::ready()
 {
-  QgsDebugMsg( "called." );
+  QgsDebugMsg( "key = " + key() );
 
   QString error;
   QString path = mLineEdit->text().trimmed();
