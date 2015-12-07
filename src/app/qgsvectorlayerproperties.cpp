@@ -31,7 +31,7 @@
 #include "qgsfieldcalculator.h"
 #include "qgsfieldsproperties.h"
 #include "qgslabeldialog.h"
-#include "qgslabelinggui.h"
+#include "qgslabelingwidget.h"
 #include "qgslabel.h"
 #include "qgsgenericprojectionselector.h"
 #include "qgslogger.h"
@@ -76,6 +76,7 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
     : QgsOptionsDialogBase( "VectorLayerProperties", parent, fl )
     , layer( lyr )
     , mMetadataFilled( false )
+    , mOriginalSubsetSQL( lyr->subsetString() )
     , mSaveAsMenu( 0 )
     , mLoadStyleMenu( 0 )
     , mRendererDialog( 0 )
@@ -130,7 +131,7 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
     // Create the Labeling dialog tab
     layout = new QVBoxLayout( labelingFrame );
     layout->setMargin( 0 );
-    labelingDialog = new QgsLabelingGui( layer, QgisApp::instance()->mapCanvas(), labelingFrame );
+    labelingDialog = new QgsLabelingWidget( layer, QgisApp::instance()->mapCanvas(), labelingFrame );
     labelingDialog->layout()->setContentsMargins( -1, 0, -1, 0 );
     layout->addWidget( labelingDialog );
     labelingFrame->setLayout( layout );
@@ -169,7 +170,7 @@ QgsVectorLayerProperties::QgsVectorLayerProperties(
   if ( layer->dataProvider()->isSaveAndLoadStyleToDBSupported() )
   {
     //for loading
-    mLoadStyleMenu = new QMenu();
+    mLoadStyleMenu = new QMenu( this );
     mLoadStyleMenu->addAction( tr( "Load from file..." ) );
     mLoadStyleMenu->addAction( tr( "Load from database" ) );
     //mActionLoadStyle->setContextMenuPolicy( Qt::PreventContextMenu );
@@ -348,6 +349,8 @@ void QgsVectorLayerProperties::insertExpression()
   QgsExpressionContext context;
   context << QgsExpressionContextUtils::globalScope()
   << QgsExpressionContextUtils::projectScope()
+  << QgsExpressionContextUtils::atlasScope( 0 )
+  << QgsExpressionContextUtils::mapSettingsScope( QgisApp::instance()->mapCanvas()->mapSettings() )
   << QgsExpressionContextUtils::layerScope( layer );
 
   QgsExpressionBuilderDialog dlg( layer, selText.replace( QChar::ParagraphSeparator, '\n' ), this, "generic", context );
@@ -363,7 +366,7 @@ void QgsVectorLayerProperties::insertExpression()
   }
 }
 
-void QgsVectorLayerProperties::setDisplayField( QString name )
+void QgsVectorLayerProperties::setDisplayField( const QString& name )
 {
   int idx = displayFieldComboBox->findText( name );
   if ( idx == -1 )
@@ -446,7 +449,7 @@ void QgsVectorLayerProperties::syncToLayer( void )
     mSimplifyDrawingGroupBox->setEnabled( false );
   }
 
-  QStringList myScalesList = PROJECT_SCALES.split( "," );
+  QStringList myScalesList = PROJECT_SCALES.split( ',' );
   myScalesList.append( "1:1" );
   mSimplifyMaximumScaleComboBox->updateScales( myScalesList );
   mSimplifyMaximumScaleComboBox->setScale( 1.0 / simplifyMethod.maximumScale() );
@@ -460,11 +463,6 @@ void QgsVectorLayerProperties::syncToLayer( void )
 
   // reset fields in label dialog
   layer->label()->setFields( layer->fields() );
-
-  if ( layer->hasGeometryType() )
-  {
-    labelingDialog->init();
-  }
 
   Q_NOWARN_DEPRECATED_PUSH
   if ( mOptsPage_LabelsOld )
@@ -493,7 +491,7 @@ void QgsVectorLayerProperties::syncToLayer( void )
   // NOTE: this is not ideal, but a quick fix for QGIS 2.0 release
   bool ok;
   bool dl = QgsProject::instance()->readBoolEntry( "DeprecatedLabels", "/Enabled", false, &ok );
-  if ( !ok || ( ok && !dl ) ) // project not flagged or set to use deprecated labels
+  if ( !ok || !dl ) // project not flagged or set to use deprecated labels
   {
     if ( mOptsPage_LabelsOld )
     {
@@ -506,11 +504,11 @@ void QgsVectorLayerProperties::syncToLayer( void )
     }
   }
 
-  mVariableEditor->context()->appendScope( QgsExpressionContextUtils::globalScope() );
-  mVariableEditor->context()->appendScope( QgsExpressionContextUtils::projectScope() );
-  mVariableEditor->context()->appendScope( QgsExpressionContextUtils::layerScope( layer ) );
-  mVariableEditor->reloadContext();
-  mVariableEditor->setEditableScopeIndex( 2 );
+  // set initial state for variable editor
+  updateVariableEditor();
+
+  // updates the init python code and ui
+  updateFieldsPropertiesDialog();
 
 } // syncToLayer()
 
@@ -534,6 +532,7 @@ void QgsVectorLayerProperties::apply()
     layer->setSubsetString( txtSubsetSQL->toPlainText() );
     mMetadataFilled = false;
   }
+  mOriginalSubsetSQL = layer->subsetString();
 
   // set up the scale based layer visibility stuff....
   layer->setScaleBasedVisibility( mScaleVisibilityGroupBox->isChecked() );
@@ -624,6 +623,7 @@ void QgsVectorLayerProperties::apply()
 
   //save variables
   QgsExpressionContextUtils::setLayerVariables( layer, mVariableEditor->variablesInActiveScope() );
+  updateVariableEditor();
 
   // update symbology
   emit refreshLegend( layer->id() );
@@ -640,11 +640,19 @@ void QgsVectorLayerProperties::onCancel()
     // need to undo changes in vector layer joins - they are applied directly to the layer (not in apply())
     // so other parts of the properties dialog can use the fields from the joined layers
 
-    foreach ( const QgsVectorJoinInfo& info, layer->vectorJoins() )
+    Q_FOREACH ( const QgsVectorJoinInfo& info, layer->vectorJoins() )
       layer->removeJoin( info.joinLayerId );
 
-    foreach ( const QgsVectorJoinInfo& info, mOldJoins )
+    Q_FOREACH ( const QgsVectorJoinInfo& info, mOldJoins )
       layer->addJoin( info );
+  }
+
+  if ( mOriginalSubsetSQL != layer->subsetString() )
+  {
+    // need to undo changes in subset string - they are applied directly to the layer (not in apply())
+    // by QgsQueryBuilder::accept()
+
+    layer->setSubsetString( mOriginalSubsetSQL );
   }
 }
 
@@ -701,7 +709,7 @@ void QgsVectorLayerProperties::on_mLayerOrigNameLineEdit_textEdited( const QStri
   txtDisplayName->setText( layer->capitaliseLayerName( text ) );
 }
 
-void QgsVectorLayerProperties::on_mCrsSelector_crsChanged( QgsCoordinateReferenceSystem crs )
+void QgsVectorLayerProperties::on_mCrsSelector_crsChanged( const QgsCoordinateReferenceSystem& crs )
 {
   layer->setCrs( crs );
 }
@@ -722,10 +730,10 @@ void QgsVectorLayerProperties::loadDefaultStyle_clicked()
 
     switch ( askToUser.exec() )
     {
-      case( 0 ):
+      case 0:
         return;
         break;
-      case( 2 ):
+      case 2:
         msg = layer->loadNamedStyle( layer->styleURI(), defaultLoadedFlag );
         if ( !defaultLoadedFlag )
         {
@@ -779,10 +787,10 @@ void QgsVectorLayerProperties::saveDefaultStyle_clicked()
 
     switch ( askToUser.exec() )
     {
-      case( 0 ):
+      case 0:
         return;
         break;
-      case( 2 ):
+      case 2:
         layer->saveStyleToDatabase( "", "", true, "", errorMsg );
         if ( errorMsg.isNull() )
         {
@@ -806,7 +814,7 @@ void QgsVectorLayerProperties::saveDefaultStyle_clicked()
 void QgsVectorLayerProperties::loadStyle_clicked()
 {
   QSettings myQSettings;  // where we keep last used filter in persistent state
-  QString myLastUsedDir = myQSettings.value( "style/lastStyleDir", "." ).toString();
+  QString myLastUsedDir = myQSettings.value( "style/lastStyleDir", QDir::homePath() ).toString();
 
   QString myFileName = QFileDialog::getOpenFileName( this, tr( "Load layer properties from style file" ), myLastUsedDir,
                        tr( "QGIS Layer Style File" ) + " (*.qml);;" + tr( "SLD File" ) + " (*.sld)" );
@@ -867,7 +875,7 @@ void QgsVectorLayerProperties::saveStyleAsMenuTriggered( QAction *action )
 void QgsVectorLayerProperties::saveStyleAs( StyleType styleType )
 {
   QSettings myQSettings;  // where we keep last used filter in persistent state
-  QString myLastUsedDir = myQSettings.value( "style/lastStyleDir", "." ).toString();
+  QString myLastUsedDir = myQSettings.value( "style/lastStyleDir", QDir::homePath() ).toString();
 
   QString format, extension;
   if ( styleType == DB )
@@ -1238,6 +1246,7 @@ void QgsVectorLayerProperties::updateSymbologyPage()
   if ( layer->rendererV2() )
   {
     mRendererDialog = new QgsRendererV2PropertiesDialog( layer, QgsStyleV2::defaultStyle(), true );
+    mRendererDialog->setMapCanvas( QgisApp::instance()->mapCanvas() );
 
     // display the menu to choose the output format (fix #5136)
     mActionSaveStyleAs->setText( tr( "Save Style" ) );
@@ -1292,4 +1301,21 @@ void QgsVectorLayerProperties::on_mSimplifyDrawingGroupBox_toggled( bool checked
   {
     mSimplifyDrawingAtProvider->setEnabled( checked );
   }
+}
+
+void QgsVectorLayerProperties::updateVariableEditor()
+{
+  QgsExpressionContext context;
+  mVariableEditor->setContext( &context );
+  mVariableEditor->context()->appendScope( QgsExpressionContextUtils::globalScope() );
+  mVariableEditor->context()->appendScope( QgsExpressionContextUtils::projectScope() );
+  mVariableEditor->context()->appendScope( QgsExpressionContextUtils::layerScope( layer ) );
+  mVariableEditor->reloadContext();
+  mVariableEditor->setEditableScopeIndex( 2 );
+}
+
+void QgsVectorLayerProperties::updateFieldsPropertiesDialog()
+{
+  QgsEditFormConfig* cfg = layer->editFormConfig();
+  mFieldsPropertiesDialog->setEditFormInit( cfg->uiForm(), cfg->initFunction(), cfg->initCode(), cfg->initFilePath(), cfg->initCodeSource() );
 }

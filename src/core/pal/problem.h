@@ -27,12 +27,13 @@
  *
  */
 
-#ifndef _PROBLEM_H
-#define _PROBLEM_H
+#ifndef PAL_PROBLEM_H
+#define PAL_PROBLEM_H
 
 #include "pal.h"
 #include "rtree.hpp"
 #include <list>
+#include <QList>
 
 namespace pal
 {
@@ -40,6 +41,10 @@ namespace pal
   class LabelPosition;
   class Label;
 
+  /**
+   * \class pal::Sol
+   * \note not available in Python bindings
+   */
   class Sol
   {
     public:
@@ -87,7 +92,9 @@ namespace pal
   } Chain;
 
   /**
-   * \brief Represent a problem
+   * \brief Representation of a labeling problem
+   * \class pal::Problem
+   * \note not available in Python bindings
    */
   class CORE_EXPORT Problem
   {
@@ -101,13 +108,19 @@ namespace pal
 
       ~Problem();
 
+      /** Adds a candidate label position to the problem.
+       * @param position label candidate position. Ownership is transferred to Problem.
+       * @note added in QGIS 2.12
+       */
+      void addCandidatePosition( LabelPosition* position ) { mLabelPositions.append( position ); }
+
       /////////////////
       // problem inspection functions
       int getNumFeatures() { return nbft; }
       // features counted 0...n-1
       int getFeatureCandidateCount( int i ) { return featNbLp[i]; }
       // both features and candidates counted 0..n-1
-      LabelPosition* getFeatureCandidate( int fi, int ci ) { return labelpositions[ featStartId[fi] + ci]; }
+      LabelPosition* getFeatureCandidate( int fi, int ci ) { return mLabelPositions.at( featStartId[fi] + ci ); }
       /////////////////
 
 
@@ -199,7 +212,7 @@ namespace pal
       double *labelPositionCost;
       int *nbOlap;
 
-      LabelPosition **labelpositions;
+      QList< LabelPosition* > mLabelPositions;
 
       RTree<LabelPosition*, double, 2, double> *candidates;  // index all candidates
       RTree<LabelPosition*, double, 2, double> *candidates_sol; // index active candidates

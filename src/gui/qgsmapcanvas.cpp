@@ -658,13 +658,13 @@ void QgsMapCanvas::refreshMap()
   // from now on we can accept refresh requests again
   mRefreshScheduled = false;
 
-  //update $map variable to canvas
-  QgsExpression::setSpecialColumn( "$map", tr( "canvas" ) );
-
   //build the expression context
   QgsExpressionContext expressionContext;
   expressionContext << QgsExpressionContextUtils::globalScope()
-  << QgsExpressionContextUtils::projectScope();
+  << QgsExpressionContextUtils::projectScope()
+  << QgsExpressionContextUtils::mapSettingsScope( mSettings )
+  << new QgsExpressionContextScope( mExpressionContextScope );
+
   mSettings.setExpressionContext( expressionContext );
 
   // create the renderer job
@@ -678,7 +678,7 @@ void QgsMapCanvas::refreshMap()
   mJob->setCache( mCache );
 
   QStringList layersForGeometryCache;
-  foreach ( QString id, mSettings.layers() )
+  Q_FOREACH ( const QString& id, mSettings.layers() )
   {
     if ( QgsVectorLayer* vl = qobject_cast<QgsVectorLayer*>( QgsMapLayerRegistry::instance()->mapLayer( id ) ) )
     {
@@ -703,7 +703,7 @@ void QgsMapCanvas::rendererJobFinished()
   mMapUpdateTimer.stop();
 
   // TODO: would be better to show the errors in message bar
-  foreach ( const QgsMapRendererJob::Error& error, mJob->errors() )
+  Q_FOREACH ( const QgsMapRendererJob::Error& error, mJob->errors() )
   {
     QgsMessageLog::logMessage( error.layerID + " :: " + error.message, tr( "Rendering" ) );
   }
@@ -790,7 +790,7 @@ void QgsMapCanvas::updateMap()
 }
 
 //the format defaults to "PNG" if not specified
-void QgsMapCanvas::saveAsImage( QString theFileName, QPixmap * theQPixmap, QString theFormat )
+void QgsMapCanvas::saveAsImage( const QString& theFileName, QPixmap * theQPixmap, const QString& theFormat )
 {
   //
   //check if the optional QPaintDevice was supplied
@@ -824,14 +824,14 @@ void QgsMapCanvas::saveAsImage( QString theFileName, QPixmap * theQPixmap, QStri
   myHeader += "0 \r\n";
   //Pixel YDim - almost always negative - see
   //http://en.wikipedia.org/wiki/World_file#cite_note-2
-  myHeader += "-" + qgsDoubleToString( mapUnitsPerPixel() ) + "\r\n";
+  myHeader += '-' + qgsDoubleToString( mapUnitsPerPixel() ) + "\r\n";
   //Origin X (center of top left cell)
   myHeader += qgsDoubleToString( myRect.xMinimum() + ( mapUnitsPerPixel() / 2 ) ) + "\r\n";
   //Origin Y (center of top left cell)
   myHeader += qgsDoubleToString( myRect.yMaximum() - ( mapUnitsPerPixel() / 2 ) ) + "\r\n";
   QFileInfo myInfo  = QFileInfo( theFileName );
   // allow dotted names
-  QString myWorldFileName = myInfo.absolutePath() + "/" + myInfo.completeBaseName() + "." + theFormat + "w";
+  QString myWorldFileName = myInfo.absolutePath() + '/' + myInfo.completeBaseName() + '.' + theFormat + 'w';
   QFile myWorldFile( myWorldFileName );
   if ( !myWorldFile.open( QIODevice::WriteOnly ) ) //don't use QIODevice::Text
   {
@@ -1239,17 +1239,18 @@ void QgsMapCanvas::keyReleaseEvent( QKeyEvent * e )
 } //keyReleaseEvent()
 
 
-void QgsMapCanvas::mouseDoubleClickEvent( QMouseEvent * e )
+void QgsMapCanvas::mouseDoubleClickEvent( QMouseEvent* e )
 {
   // call handler of current map tool
   if ( mMapTool )
   {
-    mMapTool->canvasDoubleClickEvent( e );
+    QScopedPointer<QgsMapMouseEvent> me( new QgsMapMouseEvent( this, e ) );
+    mMapTool->canvasDoubleClickEvent( me.data() );
   }
 }// mouseDoubleClickEvent
 
 
-void QgsMapCanvas::mousePressEvent( QMouseEvent * e )
+void QgsMapCanvas::mousePressEvent( QMouseEvent* e )
 {
   //use middle mouse button for panning, map tools won't receive any events in that case
   if ( e->button() == Qt::MidButton )
@@ -1263,7 +1264,8 @@ void QgsMapCanvas::mousePressEvent( QMouseEvent * e )
     // call handler of current map tool
     if ( mMapTool )
     {
-      mMapTool->canvasPressEvent( e );
+      QScopedPointer<QgsMapMouseEvent> me( new QgsMapMouseEvent( this, e ) );
+      mMapTool->canvasPressEvent( me.data() );
     }
   }
 
@@ -1278,7 +1280,7 @@ void QgsMapCanvas::mousePressEvent( QMouseEvent * e )
 } // mousePressEvent
 
 
-void QgsMapCanvas::mouseReleaseEvent( QMouseEvent * e )
+void QgsMapCanvas::mouseReleaseEvent( QMouseEvent* e )
 {
   //use middle mouse button for panning, map tools won't receive any events in that case
   if ( e->button() == Qt::MidButton )
@@ -1309,7 +1311,8 @@ void QgsMapCanvas::mouseReleaseEvent( QMouseEvent * e )
         }
         return;
       }
-      mMapTool->canvasReleaseEvent( e );
+      QScopedPointer<QgsMapMouseEvent> me( new QgsMapMouseEvent( this, e ) );
+      mMapTool->canvasReleaseEvent( me.data() );
     }
   }
 
@@ -1469,7 +1472,8 @@ void QgsMapCanvas::mouseMoveEvent( QMouseEvent * e )
     // call handler of current map tool
     if ( mMapTool )
     {
-      mMapTool->canvasMoveEvent( e );
+      QScopedPointer<QgsMapMouseEvent> me( new QgsMapMouseEvent( this, e ) );
+      mMapTool->canvasMoveEvent( me.data() );
     }
   }
 
@@ -1574,7 +1578,7 @@ int QgsMapCanvas::layerCount() const
 QList<QgsMapLayer*> QgsMapCanvas::layers() const
 {
   QList<QgsMapLayer*> lst;
-  foreach ( QString layerID, mapSettings().layers() )
+  Q_FOREACH ( const QString& layerID, mapSettings().layers() )
   {
     QgsMapLayer* layer = QgsMapLayerRegistry::instance()->mapLayer( layerID );
     if ( layer )
@@ -1689,7 +1693,7 @@ void QgsMapCanvas::updateDatumTransformEntries()
     return;
 
   QString destAuthId = mSettings.destinationCrs().authid();
-  foreach ( QString layerID, mSettings.layers() )
+  Q_FOREACH ( const QString& layerID, mSettings.layers() )
   {
     QgsMapLayer* layer = QgsMapLayerRegistry::instance()->mapLayer( layerID );
     if ( !layer )

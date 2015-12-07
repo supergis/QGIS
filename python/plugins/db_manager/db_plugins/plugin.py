@@ -37,10 +37,8 @@ class BaseError(Exception):
         else:
             msg = e
 
-        try:
-            msg = unicode(msg)
-        except UnicodeDecodeError:
-            msg = unicode(msg, 'utf-8')
+        if not isinstance(msg, unicode):
+            msg = unicode(msg, 'utf-8', 'replace') # convert from utf8 and replace errors (if any)
 
         self.msg = msg
         Exception.__init__(self, msg)
@@ -97,6 +95,9 @@ class DBPlugin(QObject):
 
         return DatabaseInfo(None)
 
+    def connect(self, parent=None):
+        raise NotImplemented
+
     def connectToUri(self, uri):
         self.db = self.databasesFactory(self, uri)
         if self.db:
@@ -110,6 +111,17 @@ class DBPlugin(QObject):
             self.db = None
             return self.connectToUri(uri)
         return self.connect(self.parent())
+
+    def remove(self):
+        settings = QSettings()
+        settings.beginGroup(u"/%s/%s" % (self.connectionSettingsKey(), self.connectionName()))
+        settings.remove("")
+        self.emit(SIGNAL('deleted'))
+        return True
+
+    @classmethod
+    def addConnection(self, conn_name, uri):
+        raise NotImplemented
 
     @classmethod
     def icon(self):
@@ -136,11 +148,6 @@ class DBPlugin(QObject):
         pass
 
     @classmethod
-    def connectionSettingsFileKey(self):
-        # return the filekey for the settings
-        pass
-
-    @classmethod
     def connections(self):
         # get the list of connections
         conn_list = []
@@ -153,6 +160,24 @@ class DBPlugin(QObject):
 
     def databasesFactory(self, connection, uri):
         return None
+
+    @classmethod
+    def addConnectionActionSlot(self, item, action, parent):
+        raise NotImplemented
+
+    def removeActionSlot(self, item, action, parent):
+        QApplication.restoreOverrideCursor()
+        try:
+            res = QMessageBox.question(parent, QApplication.translate("DBManagerPlugin", "hey!"),
+                                       QApplication.translate("DBManagerPlugin",
+                                                              "Really remove connection to %s?") % item.connectionName(),
+                                       QMessageBox.Yes | QMessageBox.No)
+            if res != QMessageBox.Yes:
+                return
+        finally:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        item.remove()
 
 
 class DbItemObject(QObject):
@@ -207,6 +232,13 @@ class Database(DbItemObject):
     def publicUri(self):
         return self.connector.publicUri()
 
+    def delete(self):
+        self.aboutToChange()
+        ret = self.connection().remove()
+        if ret is not False:
+            self.emit(SIGNAL('deleted'))
+        return ret
+
     def info(self):
         from .info_model import DatabaseInfo
 
@@ -228,7 +260,7 @@ class Database(DbItemObject):
         # may be overloaded by derived classes
         return "row_number() over ()"
 
-    def toSqlLayer(self, sql, geomCol, uniqueCol, layerName="QueryLayer", layerType=None, avoidSelectById=False):
+    def toSqlLayer(self, sql, geomCol, uniqueCol, layerName="QueryLayer", layerType=None, avoidSelectById=False, filter=""):
         from qgis.core import QgsMapLayer, QgsVectorLayer, QgsRasterLayer
 
         if uniqueCol is None:
@@ -242,7 +274,7 @@ class Database(DbItemObject):
                     uniqueCol = "_uid_"
 
         uri = self.uri()
-        uri.setDataSource("", u"(%s\n)" % sql, geomCol, "", uniqueCol)
+        uri.setDataSource("", u"(%s\n)" % sql, geomCol, filter, uniqueCol)
         if avoidSelectById:
             uri.disableSelectAtId(True)
         provider = self.dbplugin().providerName()
@@ -636,9 +668,6 @@ class Table(DbItemObject):
 
     def mimeUri(self):
         layerType = "raster" if self.type == Table.RasterType else "vector"
-        if self.database().dbplugin().typeName() == "spatialite" and self.database().connector.isgpkg():
-            url = unicode(self.database().connector._connectionInfo() + "|layername=" + self.name)
-            return u"%s:%s:%s:%s" % (layerType, "ogr", self.name, url)
         return u"%s:%s:%s:%s" % (layerType, self.database().dbplugin().providerName(), self.name, self.uri().uri())
 
     def toMapLayer(self):

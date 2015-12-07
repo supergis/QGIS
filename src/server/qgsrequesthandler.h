@@ -28,6 +28,7 @@
 #include <QMap>
 #include <QString>
 #include <QStringList>
+#include <QPair>
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 #include "qgsserverfilter.h"
@@ -113,11 +114,7 @@ class QgsRequestHandler
     */
     virtual void setPluginFilters( QgsServerFiltersMap pluginFilters ) = 0;
 #endif
-    // TODO: if HAVE_SERVER_PYTHON
-    virtual QByteArray getResponseHeader( ) = 0;
-    virtual QByteArray getResponseBody( ) = 0;
-    virtual QByteArray getResponse( const bool returnHeaders = TRUE,
-                                    const bool returnBody = TRUE ) = 0;
+    virtual QPair<QByteArray, QByteArray> getResponse( ) = 0;
 
   protected:
     virtual void sendHeaders( ) = 0;
@@ -140,8 +137,8 @@ class QgsRequestHandler
     // TODO: if HAVE_SERVER_PYTHON
     /** Response output buffers, used by Python bindings to return
      * output instead of printing with fcgi printf */
-    QByteArray mResponseHeader;
-    QByteArray mResponseBody;
+    // QByteArray mResponseHeader;
+    // QByteArray mResponseBody;
 };
 
 #endif

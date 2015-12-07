@@ -12,7 +12,7 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
 
-from qgis.core import QgsRectangle, QgsFeatureRequest, QgsGeometry, NULL
+from qgis.core import QgsRectangle, QgsFeatureRequest, QgsFeature, QgsGeometry, NULL
 
 
 class ProviderTestCase(object):
@@ -40,7 +40,13 @@ class ProviderTestCase(object):
         self.assert_query(provider, '"name" NOT LIKE \'Ap%\'', [1, 3, 4])
         self.assert_query(provider, '"name" NOT ILIKE \'QGIS\'', [1, 2, 3, 4])
         self.assert_query(provider, '"name" NOT ILIKE \'pEAR\'', [1, 2, 4])
+        self.assert_query(provider, 'name = \'Apple\'', [2])
+        self.assert_query(provider, 'name <> \'Apple\'', [1, 3, 4])
+        self.assert_query(provider, 'name = \'apple\'', [])
+        self.assert_query(provider, '"name" <> \'apple\'', [1, 2, 3, 4])
+        self.assert_query(provider, '(name = \'Apple\') is not null', [1, 2, 3, 4])
         self.assert_query(provider, 'name LIKE \'Apple\'', [2])
+        self.assert_query(provider, 'name LIKE \'aPple\'', [])
         self.assert_query(provider, 'name ILIKE \'aPple\'', [2])
         self.assert_query(provider, 'name ILIKE \'%pp%\'', [2])
         self.assert_query(provider, 'cnt > 0', [1, 2, 3, 4])
@@ -50,11 +56,48 @@ class ProviderTestCase(object):
         self.assert_query(provider, 'pk IN (1, 2, 4, 8)', [1, 2, 4])
         self.assert_query(provider, 'cnt = 50 * 2', [1])
         self.assert_query(provider, 'cnt = 99 + 1', [1])
+        self.assert_query(provider, 'cnt = 101 - 1', [1])
+        self.assert_query(provider, 'cnt - 1 = 99', [1])
+        self.assert_query(provider, 'cnt + 1 = 101', [1])
         self.assert_query(provider, 'cnt = 1100 % 1000', [1])
         self.assert_query(provider, '"name" || \' \' || "cnt" = \'Orange 100\'', [1])
         self.assert_query(provider, 'cnt = 10 ^ 2', [1])
         self.assert_query(provider, '"name" ~ \'[OP]ra[gne]+\'', [1])
+        self.assert_query(provider, '"name"="name2"', [2, 4])  # mix of matched and non-matched case sensitive names
         self.assert_query(provider, 'true', [1, 2, 3, 4, 5])
+        self.assert_query(provider, 'false', [])
+
+        #Three value logic
+        self.assert_query(provider, 'false and false', [])
+        self.assert_query(provider, 'false and true', [])
+        self.assert_query(provider, 'false and NULL', [])
+        self.assert_query(provider, 'true and false', [])
+        self.assert_query(provider, 'true and true', [1, 2, 3, 4, 5])
+        self.assert_query(provider, 'true and NULL', [])
+        self.assert_query(provider, 'NULL and false', [])
+        self.assert_query(provider, 'NULL and true', [])
+        self.assert_query(provider, 'NULL and NULL', [])
+        self.assert_query(provider, 'false or false', [])
+        self.assert_query(provider, 'false or true', [1, 2, 3, 4, 5])
+        self.assert_query(provider, 'false or NULL', [])
+        self.assert_query(provider, 'true or false', [1, 2, 3, 4, 5])
+        self.assert_query(provider, 'true or true', [1, 2, 3, 4, 5])
+        self.assert_query(provider, 'true or NULL', [1, 2, 3, 4, 5])
+        self.assert_query(provider, 'NULL or false', [])
+        self.assert_query(provider, 'NULL or true', [1, 2, 3, 4, 5])
+        self.assert_query(provider, 'NULL or NULL', [])
+        self.assert_query(provider, 'not true', [])
+        self.assert_query(provider, 'not false', [1, 2, 3, 4, 5])
+        self.assert_query(provider, 'not null', [])
+
+        #not
+        self.assert_query(provider, 'not name = \'Apple\'', [1, 3, 4])
+        self.assert_query(provider, 'not name IS NULL', [1, 2, 3, 4])
+        self.assert_query(provider, 'not name = \'Apple\' or name = \'Apple\'', [1, 2, 3, 4])
+        self.assert_query(provider, 'not name = \'Apple\' or not name = \'Apple\'', [1, 3, 4])
+        self.assert_query(provider, 'not name = \'Apple\' and pk = 4', [4])
+        self.assert_query(provider, 'not name = \'Apple\' and not pk = 4', [1, 3])
+        self.assert_query(provider, 'not pk IN (1, 2, 4, 8)', [3, 5])
 
     def testGetFeaturesUncompiled(self):
         try:
@@ -83,6 +126,45 @@ class ProviderTestCase(object):
                 .setFilterRect(extent))])
         expected = [4]
         assert set(expected) == result, 'Expected {} and got {} when testing for combination of filterRect and expression'.format(set(expected), result)
+
+    def testGetFeaturesLimit(self):
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(2))
+        features = [f['pk'] for f in it]
+        assert len(features) == 2, 'Expected two features, got {} instead'.format(len(features))
+        #fetch one feature
+        feature = QgsFeature()
+        assert not it.nextFeature(feature), 'Expected no feature after limit, got one'
+        it.rewind()
+        features = [f['pk'] for f in it]
+        assert len(features) == 2, 'Expected two features after rewind, got {} instead'.format(len(features))
+        it.rewind()
+        assert it.nextFeature(feature), 'Expected feature after rewind, got none'
+        it.rewind()
+        features = [f['pk'] for f in it]
+        assert len(features) == 2, 'Expected two features after rewind, got {} instead'.format(len(features))
+        #test with expression, both with and without compilation
+        try:
+            self.disableCompiler()
+        except AttributeError:
+            pass
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(2).setFilterExpression('cnt <= 100'))
+        features = [f['pk'] for f in it]
+        assert set(features) == set([1, 5]), 'Expected [1,5] for expression and feature limit, Got {} instead'.format(features)
+        try:
+            self.enableCompiler()
+        except AttributeError:
+            pass
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(2).setFilterExpression('cnt <= 100'))
+        features = [f['pk'] for f in it]
+        assert set(features) == set([1, 5]), 'Expected [1,5] for expression and feature limit, Got {} instead'.format(features)
+        #limit to more features than exist
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(3).setFilterExpression('cnt <= 100'))
+        features = [f['pk'] for f in it]
+        assert set(features) == set([1, 5]), 'Expected [1,5] for expression and feature limit, Got {} instead'.format(features)
+        #limit to less features than possible
+        it = self.provider.getFeatures(QgsFeatureRequest().setLimit(1).setFilterExpression('cnt <= 100'))
+        features = [f['pk'] for f in it]
+        assert 1 in features or 5 in features, 'Expected either 1 or 5 for expression and feature limit, Got {} instead'.format(features)
 
     def testMinValue(self):
         assert self.provider.minimumValue(1) == -200

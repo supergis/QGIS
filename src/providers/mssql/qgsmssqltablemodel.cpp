@@ -43,13 +43,13 @@ QgsMssqlTableModel::~QgsMssqlTableModel()
 void QgsMssqlTableModel::addTableEntry( const QgsMssqlLayerProperty &layerProperty )
 {
   QgsDebugMsg( QString( "%1.%2.%3 type=%4 srid=%5 pk=%6 sql=%7" )
-               .arg( layerProperty.schemaName )
-               .arg( layerProperty.tableName )
-               .arg( layerProperty.geometryColName )
-               .arg( layerProperty.type )
-               .arg( layerProperty.srid )
-               .arg( layerProperty.pkCols.join( "," ) )
-               .arg( layerProperty.sql ) );
+               .arg( layerProperty.schemaName,
+                     layerProperty.tableName,
+                     layerProperty.geometryColName,
+                     layerProperty.type,
+                     layerProperty.srid,
+                     layerProperty.pkCols.join( "," ),
+                     layerProperty.sql ) );
 
   // is there already a root item with the given scheme Name?
   QStandardItem *schemaItem;
@@ -133,7 +133,7 @@ void QgsMssqlTableModel::addTableEntry( const QgsMssqlLayerProperty &layerProper
     if ( detailsFromThread )
       flags |= Qt::ItemIsEnabled;
 
-    foreach ( QStandardItem *item, childItemList )
+    Q_FOREACH ( QStandardItem *item, childItemList )
     {
       item->setFlags( item->flags() & ~flags );
     }
@@ -208,8 +208,8 @@ void QgsMssqlTableModel::setSql( const QModelIndex &index, const QString &sql )
 
 void QgsMssqlTableModel::setGeometryTypesForTable( QgsMssqlLayerProperty layerProperty )
 {
-  QStringList typeList = layerProperty.type.split( ",", QString::SkipEmptyParts );
-  QStringList sridList = layerProperty.srid.split( ",", QString::SkipEmptyParts );
+  QStringList typeList = layerProperty.type.split( ',', QString::SkipEmptyParts );
+  QStringList sridList = layerProperty.srid.split( ',', QString::SkipEmptyParts );
   Q_ASSERT( typeList.size() == sridList.size() );
 
   //find schema item and table item
@@ -251,7 +251,7 @@ void QgsMssqlTableModel::setGeometryTypesForTable( QgsMssqlLayerProperty layerPr
         row[ dbtmSrid ]->setText( tr( "Enter..." ) );
         row[ dbtmSrid ]->setFlags( row[ dbtmSrid ]->flags() | Qt::ItemIsEditable );
 
-        foreach ( QStandardItem *item, row )
+        Q_FOREACH ( QStandardItem *item, row )
         {
           item->setFlags( item->flags() | Qt::ItemIsEnabled );
         }
@@ -272,7 +272,7 @@ void QgsMssqlTableModel::setGeometryTypesForTable( QgsMssqlLayerProperty layerPr
         if ( layerProperty.pkCols.size() < 2 )
           flags |= Qt::ItemIsSelectable;
 
-        foreach ( QStandardItem *item, row )
+        Q_FOREACH ( QStandardItem *item, row )
         {
           item->setFlags( item->flags() | flags );
         }

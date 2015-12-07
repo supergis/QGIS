@@ -100,8 +100,21 @@ class QgsComposerMapGridStack : QgsComposerMapItemStack
     /** Calculates the maximum distance grids within the stack extend
      * beyond the QgsComposerMap's item rect
      * @returns maximum grid extension
+     * @see calculateMaxGridExtension()
      */
     double maxGridExtension() const;
+
+    /** Calculates the maximum distance grids within the stack extend beyond the
+     * QgsComposerMap's item rect. This method calculates the distance for each side of the
+     * map item separately
+     * @param top storage for top extension
+     * @param right storage for right extension
+     * @param bottom storage for bottom extension
+     * @param left storage for left extension
+     * @note added in QGIS 2.12
+     * @see maxGridExtension()
+     */
+    void calculateMaxGridExtension( double& top, double& right, double& bottom, double& left ) const;
 
 };
 
@@ -182,9 +195,10 @@ class QgsComposerMapGrid : QgsComposerMapItem
       DegreeMinuteSecond, /*!< degree/minutes/seconds, use NSEW suffix */
       DecimalWithSuffix, /*!< decimal degrees, use NSEW suffix */
       DegreeMinuteNoSuffix, /*!< degree/minutes, use - for S/W coordinates */
-      DegreeMinutePadded, /*!< degree/minutes, with minutes using leading zeros were required */
+      DegreeMinutePadded, /*!< degree/minutes, with minutes using leading zeros where required */
       DegreeMinuteSecondNoSuffix, /*!< degree/minutes/seconds, use - for S/W coordinates */
-      DegreeMinuteSecondPadded /*!< degree/minutes/seconds, with minutes using leading zeros were required */
+      DegreeMinuteSecondPadded, /*!< degree/minutes/seconds, with minutes using leading zeros where required */
+      CustomFormat /*!< custom expression-based format */
     };
 
     /** Border sides for annotations
@@ -285,7 +299,20 @@ class QgsComposerMapGrid : QgsComposerMapItem
      * item rect
      * @returns maximum extension in millimetres
      */
-    double maxExtension() const;
+    double maxExtension();
+
+    /** Calculates the maximum distance the grid extends beyond the
+     * QgsComposerMap's item rect. This method calculates the distance for each side of the
+     * map item separately
+     * @param top storage for top extension
+     * @param right storage for right extension
+     * @param bottom storage for bottom extension
+     * @param left storage for left extension
+     * @note added in QGIS 2.12
+     * @see maxExtension()
+     */
+    void calculateMaxExtension( double& top, double& right, double& bottom, double& left );
+
 
     //
     // GRID UNITS
@@ -586,6 +613,22 @@ class QgsComposerMapGrid : QgsComposerMapItem
     */
     AnnotationFormat annotationFormat() const;
 
+    /** Sets the expression used for drawing grid annotations. This is only used when annotationFormat()
+     * is QgsComposerMapGrid::CustomFormat.
+     * @param expression expression for evaluating custom grid annotations
+     * @see annotationExpression
+     * @note added in QGIS 2.12
+    */
+    void setAnnotationExpression( const QString& expression );
+
+    /** Returns the expression used for drawing grid annotations. This is only used when annotationFormat()
+     * is QgsComposerMapGrid::CustomFormat.
+     * @returns expression for evaluating custom grid annotations
+     * @see setAnnotationExpression
+     * @note added in QGIS 2.12
+    */
+    QString annotationExpression() const;
+
     //
     // GRID FRAME
     //
@@ -625,7 +668,7 @@ class QgsComposerMapGrid : QgsComposerMapItem
      * @see frameSideFlags
      * @see testFrameSideFlag
     */
-    void setFrameSideFlags( const FrameSideFlags flags );
+    void setFrameSideFlags( const FrameSideFlags& flags );
 
     /** Sets whether the grid frame is drawn for a certain side of the map item.
      * @param flag flag for grid frame side
@@ -734,5 +777,7 @@ class QgsComposerMapGrid : QgsComposerMapItem
      * @see frameFillColor1
     */
     QColor frameFillColor2() const;
+
+    virtual QgsExpressionContext* createExpressionContext() const;
 
 };

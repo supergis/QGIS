@@ -21,7 +21,7 @@ email                : marco.hugentobler at sourcepole dot com
 #include "qgspolygonv2.h"
 #include "qgscurvepolygonv2.h"
 
-QgsAbstractGeometryV2 *QgsMultiPolygonV2::clone() const
+QgsMultiPolygonV2 *QgsMultiPolygonV2::clone() const
 {
   return new QgsMultiPolygonV2( *this );
 }
@@ -35,7 +35,7 @@ QDomElement QgsMultiPolygonV2::asGML2( QDomDocument& doc, int precision, const Q
 {
   // GML2 does not support curves
   QDomElement elemMultiPolygon = doc.createElementNS( ns, "MultiPolygon" );
-  foreach ( const QgsAbstractGeometryV2 *geom, mGeometries )
+  Q_FOREACH ( const QgsAbstractGeometryV2 *geom, mGeometries )
   {
     if ( dynamic_cast<const QgsPolygonV2*>( geom ) )
     {
@@ -51,7 +51,7 @@ QDomElement QgsMultiPolygonV2::asGML2( QDomDocument& doc, int precision, const Q
 QDomElement QgsMultiPolygonV2::asGML3( QDomDocument& doc, int precision, const QString& ns ) const
 {
   QDomElement elemMultiSurface = doc.createElementNS( ns, "MultiPolygon" );
-  foreach ( const QgsAbstractGeometryV2 *geom, mGeometries )
+  Q_FOREACH ( const QgsAbstractGeometryV2 *geom, mGeometries )
   {
     if ( dynamic_cast<const QgsPolygonV2*>( geom ) )
     {
@@ -68,11 +68,11 @@ QString QgsMultiPolygonV2::asJSON( int precision ) const
 {
   // GeoJSON does not support curves
   QString json = "{\"type\": \"MultiPolygon\", \"coordinates\": [";
-  foreach ( const QgsAbstractGeometryV2 *geom, mGeometries )
+  Q_FOREACH ( const QgsAbstractGeometryV2 *geom, mGeometries )
   {
     if ( dynamic_cast<const QgsPolygonV2*>( geom ) )
     {
-      json += "[";
+      json += '[';
 
       const QgsPolygonV2* polygon = static_cast<const QgsPolygonV2*>( geom );
 

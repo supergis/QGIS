@@ -59,7 +59,7 @@ QSizeF QgsLegendRenderer::paintAndDetermineSize( QPainter* painter )
   qreal maxColumnWidth = 0;
   if ( mSettings.equalColumnWidth() )
   {
-    foreach ( Atom atom, atomList )
+    Q_FOREACH ( const Atom& atom, atomList )
     {
       maxColumnWidth = qMax( atom.size.width(), maxColumnWidth );
     }
@@ -76,7 +76,7 @@ QSizeF QgsLegendRenderer::paintAndDetermineSize( QPainter* painter )
   double columnMaxHeight = 0;
   qreal columnWidth = 0;
   int column = 0;
-  foreach ( Atom atom, atomList )
+  Q_FOREACH ( const Atom& atom, atomList )
   {
     if ( atom.column > column )
     {
@@ -153,7 +153,7 @@ QList<QgsLegendRenderer::Atom> QgsLegendRenderer::createAtomList( QgsLayerTreeGr
 
   if ( !parentGroup ) return atoms;
 
-  foreach ( QgsLayerTreeNode* node, parentGroup->children() )
+  Q_FOREACH ( QgsLayerTreeNode* node, parentGroup->children() )
   {
     if ( QgsLayerTree::isGroup( node ) )
     {
@@ -211,7 +211,7 @@ QList<QgsLegendRenderer::Atom> QgsLegendRenderer::createAtomList( QgsLayerTreeGr
       // workaround for the issue that "filtering by map" does not remove layer nodes that have no symbols present
       // on the map. We explicitly skip such layers here. In future ideally that should be handled directly
       // in the layer tree model
-      if ( legendNodes.isEmpty() && mLegendModel->legendFilterByMap() )
+      if ( legendNodes.isEmpty() && mLegendModel->legendFilterMapSettings() )
         continue;
 
       QList<Atom> layerAtoms;
@@ -262,7 +262,7 @@ void QgsLegendRenderer::setColumns( QList<Atom>& atomList )
   double totalHeight = 0;
   // bool first = true;
   qreal maxAtomHeight = 0;
-  foreach ( Atom atom, atomList )
+  Q_FOREACH ( const Atom& atom, atomList )
   {
     //if ( !first )
     //{
@@ -420,7 +420,7 @@ QSizeF QgsLegendRenderer::drawTitle( QPainter* painter, QPointF point, Qt::Align
 }
 
 
-double QgsLegendRenderer::spaceAboveAtom( Atom atom )
+double QgsLegendRenderer::spaceAboveAtom( const Atom& atom )
 {
   if ( atom.nucleons.size() == 0 ) return 0;
 
@@ -445,11 +445,11 @@ double QgsLegendRenderer::spaceAboveAtom( Atom atom )
 
 
 // Draw atom and expand its size (using actual nucleons labelXOffset)
-QSizeF QgsLegendRenderer::drawAtom( Atom atom, QPainter* painter, QPointF point )
+QSizeF QgsLegendRenderer::drawAtom( const Atom& atom, QPainter* painter, QPointF point )
 {
   bool first = true;
   QSizeF size = QSizeF( atom.size );
-  foreach ( Nucleon nucleon, atom.nucleons )
+  Q_FOREACH ( const Nucleon& nucleon, atom.nucleons )
   {
     if ( QgsLayerTreeGroup* groupItem = qobject_cast<QgsLayerTreeGroup*>( nucleon.item ) )
     {

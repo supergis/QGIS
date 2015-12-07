@@ -272,9 +272,9 @@ bool QgsAlignRaster::checkInputParameters()
       mErrorMessage = QString( "Failed to get suggested warp output.\n\n"
                                "File:\n%1\n\n"
                                "Source WKT:\n%2\n\nDestination WKT:\n%3" )
-                      .arg( r.inputFilename )
-                      .arg( info.mCrsWkt )
-                      .arg( mCrsWkt );
+                      .arg( r.inputFilename,
+                            info.mCrsWkt,
+                            mCrsWkt );
       return false;
     }
 
@@ -319,7 +319,7 @@ bool QgsAlignRaster::checkInputParameters()
   // output raster grid configuration (with no rotation/shear)
   // ... and raster width/height
 
-  double originX = ceil_with_tolerance(( finalExtent[0] - mGridOffsetX ) / mCellSizeX ) * mCellSizeX + mGridOffsetX;;
+  double originX = ceil_with_tolerance(( finalExtent[0] - mGridOffsetX ) / mCellSizeX ) * mCellSizeX + mGridOffsetX;
   double originY = ceil_with_tolerance(( finalExtent[1] - mGridOffsetY ) / mCellSizeY ) * mCellSizeY + mGridOffsetY;
   int xSize = floor_with_tolerance(( finalExtent[2] - originX ) / mCellSizeX );
   int ySize = floor_with_tolerance(( finalExtent[3] - originY ) / mCellSizeY );
@@ -366,7 +366,7 @@ bool QgsAlignRaster::run()
 
   //dump();
 
-  foreach ( const Item& r, mRasters )
+  Q_FOREACH ( const Item& r, mRasters )
   {
     if ( !createAndWarp( r ) )
       return false;
@@ -401,7 +401,7 @@ int QgsAlignRaster::suggestedReferenceLayer() const
   QgsCoordinateReferenceSystem destCRS( "EPSG:4326" );
   QString destWkt = destCRS.toWkt();
 
-  foreach ( const Item& raster, mRasters )
+  Q_FOREACH ( const Item& raster, mRasters )
   {
     if ( !suggestedWarpOutput( RasterInfo( raster.inputFilename ), destWkt, &cs ) )
       return false;

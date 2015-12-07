@@ -63,14 +63,17 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest& request )
   // build sql statement
   mStatement = QString( "SELECT " );
 
+  if ( request.limit() >= 0 && request.filterType() != QgsFeatureRequest::FilterExpression )
+    mStatement += QString( "TOP %1 " ).arg( mRequest.limit() );
+
   mStatement += QString( "[%1]" ).arg( mSource->mFidColName );
   mFidCol = mSource->mFields.indexFromName( mSource->mFidColName );
   mAttributesToFetch.append( mFidCol );
 
   bool subsetOfAttributes = mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes;
-  foreach ( int i, subsetOfAttributes ? mRequest.subsetOfAttributes() : mSource->mFields.allAttributesList() )
+  Q_FOREACH ( int i, subsetOfAttributes ? mRequest.subsetOfAttributes() : mSource->mFields.allAttributesList() )
   {
-    QString fieldname = mSource->mFields[i].name();
+    QString fieldname = mSource->mFields.at( i ).name();
     if ( mSource->mFidColName == fieldname )
       continue;
 
@@ -97,11 +100,11 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest& request )
 
     foo.setRealNumberPrecision( 8 );
     foo.setRealNumberNotation( QTextStream::FixedNotation );
-    foo <<  qgsDoubleToString( request.filterRect().xMinimum() ) << " " <<  qgsDoubleToString( request.filterRect().yMinimum() ) << ", "
-    <<  qgsDoubleToString( request.filterRect().xMaximum() ) << " " << qgsDoubleToString( request.filterRect().yMinimum() ) << ", "
-    <<  qgsDoubleToString( request.filterRect().xMaximum() ) << " " <<  qgsDoubleToString( request.filterRect().yMaximum() ) << ", "
-    <<  qgsDoubleToString( request.filterRect().xMinimum() ) << " " <<  qgsDoubleToString( request.filterRect().yMaximum() ) << ", "
-    <<  qgsDoubleToString( request.filterRect().xMinimum() ) << " " <<  qgsDoubleToString( request.filterRect().yMinimum() );
+    foo <<  qgsDoubleToString( request.filterRect().xMinimum() ) << ' ' <<  qgsDoubleToString( request.filterRect().yMinimum() ) << ", "
+    <<  qgsDoubleToString( request.filterRect().xMaximum() ) << ' ' << qgsDoubleToString( request.filterRect().yMinimum() ) << ", "
+    <<  qgsDoubleToString( request.filterRect().xMaximum() ) << ' ' <<  qgsDoubleToString( request.filterRect().yMaximum() ) << ", "
+    <<  qgsDoubleToString( request.filterRect().xMinimum() ) << ' ' <<  qgsDoubleToString( request.filterRect().yMaximum() ) << ", "
+    <<  qgsDoubleToString( request.filterRect().xMinimum() ) << ' ' <<  qgsDoubleToString( request.filterRect().yMinimum() );
 
     mStatement += QString( " where [%1].STIntersects([%2]::STGeomFromText('POLYGON((%3))',%4)) = 1" ).arg(
                     mSource->mGeometryColName, mSource->mGeometryColType, r, QString::number( mSource->mSRId ) );
@@ -125,9 +128,9 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest& request )
   if ( !mSource->mSqlWhereClause.isEmpty() )
   {
     if ( !filterAdded )
-      mStatement += " WHERE (" + mSource->mSqlWhereClause + ")";
+      mStatement += " WHERE (" + mSource->mSqlWhereClause + ')';
     else
-      mStatement += " AND (" + mSource->mSqlWhereClause + ")";
+      mStatement += " AND (" + mSource->mSqlWhereClause + ')';
   }
 
   QgsDebugMsg( mStatement );

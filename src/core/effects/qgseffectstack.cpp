@@ -138,7 +138,7 @@ void QgsEffectStack::draw( QgsRenderContext &context )
   }
 }
 
-QgsPaintEffect *QgsEffectStack::clone() const
+QgsEffectStack* QgsEffectStack::clone() const
 {
   return new QgsEffectStack( *this );
 }
@@ -156,7 +156,7 @@ bool QgsEffectStack::saveProperties( QDomDocument &doc, QDomElement &element ) c
   effectElement.setAttribute( QString( "enabled" ), mEnabled );
 
   bool ok = true;
-  foreach ( QgsPaintEffect* effect, mEffectList )
+  Q_FOREACH ( QgsPaintEffect* effect, mEffectList )
   {
     if ( effect )
       ok = ok && effect->saveProperties( doc, effectElement );

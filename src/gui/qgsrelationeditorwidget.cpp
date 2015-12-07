@@ -179,7 +179,7 @@ void QgsRelationEditorWidget::setViewMode( QgsDualView::ViewMode mode )
   mViewMode = mode;
 }
 
-void QgsRelationEditorWidget::setQgisRelation( QString qgisRelationId )
+void QgsRelationEditorWidget::setQgisRelation( const QString& qgisRelationId )
 {
   mRelationId = qgisRelationId;
   // by setting the object name appropriately we can properly save the collapsed state
@@ -209,7 +209,7 @@ void QgsRelationEditorWidget::addFeature()
 
   QgsFields fields = mRelation.referencingLayer()->fields();
 
-  Q_FOREACH ( QgsRelation::FieldPair fieldPair, mRelation.fieldPairs() )
+  Q_FOREACH ( const QgsRelation::FieldPair& fieldPair, mRelation.fieldPairs() )
   {
     keyAttrs.insert( fields.indexFromName( fieldPair.referencingField() ), mFeature.attribute( fieldPair.referencedField() ) );
   }
@@ -219,12 +219,12 @@ void QgsRelationEditorWidget::addFeature()
 
 void QgsRelationEditorWidget::linkFeature()
 {
-  QgsFeatureSelectionDlg selectionDlg( mRelation.referencingLayer(), this );
+  QgsFeatureSelectionDlg selectionDlg( mRelation.referencingLayer(), mEditorContext , this );
 
   if ( selectionDlg.exec() )
   {
     QMap<int, QVariant> keys;
-    Q_FOREACH ( const QgsRelation::FieldPair fieldPair, mRelation.fieldPairs() )
+    Q_FOREACH ( const QgsRelation::FieldPair& fieldPair, mRelation.fieldPairs() )
     {
       int idx = mRelation.referencingLayer()->fieldNameIndex( fieldPair.referencingField() );
       QVariant val = mFeature.attribute( fieldPair.referencedField() );
@@ -254,7 +254,7 @@ void QgsRelationEditorWidget::deleteFeature()
 void QgsRelationEditorWidget::unlinkFeature()
 {
   QMap<int, QgsField> keyFields;
-  Q_FOREACH ( const QgsRelation::FieldPair fieldPair, mRelation.fieldPairs() )
+  Q_FOREACH ( const QgsRelation::FieldPair& fieldPair, mRelation.fieldPairs() )
   {
     int idx = mRelation.referencingLayer()->fieldNameIndex( fieldPair.referencingField() );
     if ( idx < 0 )

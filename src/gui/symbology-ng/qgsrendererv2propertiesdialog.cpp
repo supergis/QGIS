@@ -33,7 +33,7 @@
 #include <QKeyEvent>
 #include <QMessageBox>
 
-static bool _initRenderer( QString name, QgsRendererV2WidgetFunc f, QString iconName = QString() )
+static bool _initRenderer( const QString& name, QgsRendererV2WidgetFunc f, const QString& iconName = QString() )
 {
   QgsRendererV2Registry* reg = QgsRendererV2Registry::instance();
   QgsRendererV2AbstractMetadata* am = reg->rendererMetadata( name );
@@ -78,6 +78,7 @@ QgsRendererV2PropertiesDialog::QgsRendererV2PropertiesDialog( QgsVectorLayer* la
     , mStyle( style )
     , mActiveWidget( NULL )
     , mPaintEffect( 0 )
+    , mMapCanvas( 0 )
 {
   setupUi( this );
 
@@ -117,7 +118,7 @@ QgsRendererV2PropertiesDialog::QgsRendererV2PropertiesDialog( QgsVectorLayer* la
   QPixmap pix;
   QgsRendererV2Registry* reg = QgsRendererV2Registry::instance();
   QStringList renderers = reg->renderersList();
-  foreach ( QString name, renderers )
+  Q_FOREACH ( const QString& name, renderers )
   {
     QgsRendererV2AbstractMetadata* m = reg->rendererMetadata( name );
     cboRenderers->addItem( m->icon(), m->visibleName(), name );
@@ -147,6 +148,13 @@ QgsRendererV2PropertiesDialog::QgsRendererV2PropertiesDialog( QgsVectorLayer* la
 QgsRendererV2PropertiesDialog::~QgsRendererV2PropertiesDialog()
 {
   delete mPaintEffect;
+}
+
+void QgsRendererV2PropertiesDialog::setMapCanvas( QgsMapCanvas* canvas )
+{
+  mMapCanvas = canvas;
+  if ( mActiveWidget )
+    mActiveWidget->setMapCanvas( mMapCanvas );
 }
 
 
@@ -193,6 +201,8 @@ void QgsRendererV2PropertiesDialog::rendererChanged()
     mActiveWidget = w;
     stackedWidget->addWidget( mActiveWidget );
     stackedWidget->setCurrentWidget( mActiveWidget );
+    if ( mMapCanvas && mActiveWidget->renderer() )
+      mActiveWidget->setMapCanvas( mMapCanvas );
   }
   else
   {

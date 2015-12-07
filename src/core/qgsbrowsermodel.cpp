@@ -109,7 +109,7 @@ void QgsBrowserModel::addRootItems()
   }
 
   // add drives
-  foreach ( QFileInfo drive, QDir::drives() )
+  Q_FOREACH ( const QFileInfo& drive, QDir::drives() )
   {
     QString path = drive.absolutePath();
     QgsDirectoryItem *item = new QgsDirectoryItem( NULL, path, path );
@@ -128,7 +128,7 @@ void QgsBrowserModel::addRootItems()
   // container for displaying providers as sorted groups (by QgsDataProvider::DataCapability enum)
   QMap<int, QgsDataItem *> providerMap;
 
-  foreach ( QgsDataItemProvider* pr, QgsDataItemProviderRegistry::instance()->providers() )
+  Q_FOREACH ( QgsDataItemProvider* pr, QgsDataItemProviderRegistry::instance()->providers() )
   {
     int capabilities = pr->capabilities();
     if ( capabilities == QgsDataProvider::NoDataCapabilities )
@@ -147,7 +147,7 @@ void QgsBrowserModel::addRootItems()
   }
 
   // add as sorted groups by QgsDataProvider::DataCapability enum
-  foreach ( int key, providerMap.uniqueKeys() )
+  Q_FOREACH ( int key, providerMap.uniqueKeys() )
   {
     QList<QgsDataItem *> providerGroup = providerMap.values( key );
     if ( providerGroup.size() > 1 )
@@ -155,7 +155,7 @@ void QgsBrowserModel::addRootItems()
       qSort( providerGroup.begin(), providerGroup.end(), cmpByDataItemName_ );
     }
 
-    foreach ( QgsDataItem * ditem, providerGroup )
+    Q_FOREACH ( QgsDataItem * ditem, providerGroup )
     {
       mRootItems << ditem;
     }
@@ -164,7 +164,7 @@ void QgsBrowserModel::addRootItems()
 
 void QgsBrowserModel::removeRootItems()
 {
-  foreach ( QgsDataItem* item, mRootItems )
+  Q_FOREACH ( QgsDataItem* item, mRootItems )
   {
     delete item;
   }
@@ -202,7 +202,16 @@ QVariant QgsBrowserModel::data( const QModelIndex &index, int role ) const
   }
   else if ( role == Qt::DisplayRole )
   {
-    return item->name();
+    if ( index.column() == 0 )
+    {
+      return item->name();
+    }
+    if ( item->type() == QgsDataItem::Layer )
+    {
+      QgsLayerItem* lyrItem = qobject_cast<QgsLayerItem*>( item );
+      return lyrItem->comments();
+    }
+    return "";
   }
   else if ( role == Qt::ToolTipRole )
   {
@@ -267,12 +276,12 @@ int QgsBrowserModel::columnCount( const QModelIndex &parent ) const
   return 1;
 }
 
-QModelIndex QgsBrowserModel::findPath( QString path, Qt::MatchFlag matchFlag )
+QModelIndex QgsBrowserModel::findPath( const QString& path, Qt::MatchFlag matchFlag )
 {
   return findPath( this, path, matchFlag );
 }
 
-QModelIndex QgsBrowserModel::findPath( QAbstractItemModel *model, QString path, Qt::MatchFlag matchFlag )
+QModelIndex QgsBrowserModel::findPath( QAbstractItemModel *model, const QString& path, Qt::MatchFlag matchFlag )
 {
   if ( !model )
     return QModelIndex();
@@ -296,7 +305,7 @@ QModelIndex QgsBrowserModel::findPath( QAbstractItemModel *model, QString path, 
       }
 
       // paths are slash separated identifier
-      if ( path.startsWith( itemPath + "/" ) )
+      if ( path.startsWith( itemPath + '/' ) )
       {
         foundChild = true;
         theIndex = idx;
@@ -430,7 +439,7 @@ QStringList QgsBrowserModel::mimeTypes() const
 QMimeData * QgsBrowserModel::mimeData( const QModelIndexList &indexes ) const
 {
   QgsMimeDataUtils::UriList lst;
-  foreach ( const QModelIndex &index, indexes )
+  Q_FOREACH ( const QModelIndex &index, indexes )
   {
     if ( index.isValid() )
     {
@@ -488,7 +497,7 @@ void QgsBrowserModel::fetchMore( const QModelIndex & parent )
 }
 
 /* Refresh dir path */
-void QgsBrowserModel::refresh( QString path )
+void QgsBrowserModel::refresh( const QString& path )
 {
   QModelIndex index = findPath( path );
   refresh( index );
@@ -506,7 +515,7 @@ void QgsBrowserModel::refresh( const QModelIndex& theIndex )
   item->refresh();
 }
 
-void QgsBrowserModel::addFavouriteDirectory( QString favDir )
+void QgsBrowserModel::addFavouriteDirectory( const QString& favDir )
 {
   Q_ASSERT( mFavourites );
   mFavourites->addDirectory( favDir );

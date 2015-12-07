@@ -21,7 +21,7 @@
 #include "qgslinestringv2.h"
 #include "qgswkbptr.h"
 
-QgsAbstractGeometryV2* QgsPolygonV2::clone() const
+QgsPolygonV2* QgsPolygonV2::clone() const
 {
   return new QgsPolygonV2( *this );
 }
@@ -74,7 +74,7 @@ int QgsPolygonV2::wkbSize() const
     // Endianness and WkbType is not stored for LinearRings
     size += mExteriorRing->wkbSize() - ( sizeof( char ) + sizeof( quint32 ) );
   }
-  foreach ( const QgsCurveV2* curve, mInteriorRings )
+  Q_FOREACH ( const QgsCurveV2* curve, mInteriorRings )
   {
     // Endianness and WkbType is not stored for LinearRings
     size += curve->wkbSize() - ( sizeof( char ) + sizeof( quint32 ) );
@@ -96,7 +96,7 @@ unsigned char* QgsPolygonV2::asWkb( int& binarySize ) const
     mExteriorRing->points( pts );
     QgsGeometryUtils::pointsToWKB( wkb, pts, mExteriorRing->is3D(), mExteriorRing->isMeasure() );
   }
-  foreach ( const QgsCurveV2* curve, mInteriorRings )
+  Q_FOREACH ( const QgsCurveV2* curve, mInteriorRings )
   {
     QList<QgsPointV2> pts;
     curve->points( pts );
@@ -107,5 +107,5 @@ unsigned char* QgsPolygonV2::asWkb( int& binarySize ) const
 
 QgsPolygonV2* QgsPolygonV2::surfaceToPolygon() const
 {
-  return dynamic_cast<QgsPolygonV2*>( clone() );
+  return clone();
 }

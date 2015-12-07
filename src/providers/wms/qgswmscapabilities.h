@@ -7,6 +7,7 @@
 #include <QStringList>
 #include <QVector>
 
+#include "qgsauthmanager.h"
 #include "qgsraster.h"
 #include "qgsrectangle.h"
 
@@ -434,20 +435,25 @@ struct QgsWmsParserSettings
 
 struct QgsWmsAuthorization
 {
-  QgsWmsAuthorization( const QString& userName = QString(), const QString& password = QString(), const QString& referer = QString() )
-      : mUserName( userName ), mPassword( password ), mReferer( referer ) {}
+  QgsWmsAuthorization( const QString& userName = QString(), const QString& password = QString(), const QString& referer = QString(), const QString& authcfg = QString() )
+      : mUserName( userName ), mPassword( password ), mReferer( referer ), mAuthCfg( authcfg ) {}
 
-  void setAuthorization( QNetworkRequest &request ) const
+  bool setAuthorization( QNetworkRequest &request ) const
   {
-    if ( !mUserName.isNull() || !mPassword.isNull() )
+    if ( !mAuthCfg.isEmpty() )
     {
-      request.setRawHeader( "Authorization", "Basic " + QString( "%1:%2" ).arg( mUserName ).arg( mPassword ).toAscii().toBase64() );
+      return QgsAuthManager::instance()->updateNetworkRequest( request, mAuthCfg );
+    }
+    else if ( !mUserName.isNull() || !mPassword.isNull() )
+    {
+      request.setRawHeader( "Authorization", "Basic " + QString( "%1:%2" ).arg( mUserName, mPassword ).toAscii().toBase64() );
     }
 
     if ( !mReferer.isNull() )
     {
       request.setRawHeader( "Referer", QString( "%1" ).arg( mReferer ).toAscii() );
     }
+    return true;
   }
 
   //! Username for basic http authentication
@@ -459,7 +465,8 @@ struct QgsWmsAuthorization
   //! Referer for http requests
   QString mReferer;
 
-
+  //! Authentication configuration ID
+  QString mAuthCfg;
 };
 
 
@@ -468,7 +475,7 @@ class QgsWmsSettings
 {
   public:
 
-    bool parseUri( QString uriString );
+    bool parseUri( const QString& uriString );
 
     QString baseUrl() const { return mBaseUrl; }
     QgsWmsAuthorization authorization() const { return mAuth; }
@@ -607,7 +614,7 @@ class QgsWmsCapabilities
     void parseKeywords( const QDomNode &e, QStringList &keywords );
     void parseTheme( const QDomElement &e, QgsWmtsTheme &t );
 
-    QString nodeAttribute( const QDomElement &e, QString name, QString defValue = QString::null );
+    QString nodeAttribute( const QDomElement &e, const QString& name, const QString& defValue = QString::null );
 
     /**
      * In case no bounding box is present in WMTS capabilities, try to estimate it from tile matrix sets.
@@ -677,15 +684,23 @@ class QgsWmsCapabilities
 
 
 
-/** Class that handles download of capabilities */
+/** Class that handles download of capabilities.
+ * Methods of this class may only be called directly from the thread to which instance of the class has affinity.
+ * It is possible to connect to abort() slot from another thread however.
+ */
+/* The requirement to call methods only from the thread to which this class instance has affinity guarantees that
+ * abort() cannot be called in the middle of another method and makes it simple to check if the request was aborted.
+ */
 class QgsWmsCapabilitiesDownload : public QObject
 {
     Q_OBJECT
 
   public:
-    QgsWmsCapabilitiesDownload( QObject* parent = 0 );
+    explicit QgsWmsCapabilitiesDownload( bool forceRefresh, QObject* parent = 0 );
 
-    QgsWmsCapabilitiesDownload( const QString& baseUrl, const QgsWmsAuthorization& auth, QObject* parent = 0 );
+    QgsWmsCapabilitiesDownload( const QString& baseUrl, const QgsWmsAuthorization& auth, bool forceRefresh, QObject* parent = 0 );
+
+    virtual ~QgsWmsCapabilitiesDownload();
 
     bool downloadCapabilities();
 
@@ -695,8 +710,10 @@ class QgsWmsCapabilitiesDownload : public QObject
 
     QByteArray response() const { return mHttpCapabilitiesResponse; }
 
+  public slots:
     /** Abort network request immediately */
     void abort();
+
   signals:
     /** \brief emit a signal to be caught by qgisapp and display a msg on status bar */
     void statusChanged( QString const &  theStatusQString );
@@ -704,7 +721,14 @@ class QgsWmsCapabilitiesDownload : public QObject
     /** \brief emit a signal once the download is finished */
     void downloadFinished();
 
+    /** Send request via signal/slot to main another thread */
+    void sendRequest( const QNetworkRequest & request );
+
+    /** Abort request through QgsNetworkAccessManager */
+    void deleteReply( QNetworkReply * reply );
+
   protected slots:
+    void requestSent( QNetworkReply * reply, QObject *sender );
     void capabilitiesReplyFinished();
     void capabilitiesReplyProgress( qint64, qint64 );
 
@@ -727,6 +751,10 @@ class QgsWmsCapabilitiesDownload : public QObject
     QByteArray mHttpCapabilitiesResponse;
 
     bool mIsAborted;
+    bool mForceRefresh;
+
+  private:
+    void connectManager();
 };
 
 

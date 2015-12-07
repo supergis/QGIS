@@ -231,7 +231,7 @@ void QgsComposerLabel::setHtmlState( int state )
   }
 }
 
-void QgsComposerLabel::setExpressionContext( QgsFeature *feature, QgsVectorLayer* layer, QMap<QString, QVariant> substitutions )
+void QgsComposerLabel::setExpressionContext( QgsFeature *feature, QgsVectorLayer* layer, const QMap<QString, QVariant>& substitutions )
 {
   mExpressionFeature.reset( feature ? new QgsFeature( *feature ) : 0 );
   mExpressionLayer = layer;
@@ -257,7 +257,7 @@ void QgsComposerLabel::setExpressionContext( QgsFeature *feature, QgsVectorLayer
   update();
 }
 
-void QgsComposerLabel::setSubstitutions( QMap<QString, QVariant> substitutions )
+void QgsComposerLabel::setSubstitutions( const QMap<QString, QVariant>& substitutions )
 {
   mSubstitutions = substitutions;
 }
@@ -297,7 +297,6 @@ QString QgsComposerLabel::displayText() const
   QString displayText = mText;
   replaceDateText( displayText );
   QMap<QString, QVariant> subs = mSubstitutions;
-  subs[ "$page" ] = QVariant(( int )mComposition->itemPageNumber( this ) + 1 );
 
   QScopedPointer<QgsExpressionContext> context( createExpressionContext() );
   //overwrite layer/feature if they have been set via setExpressionContext
@@ -318,8 +317,8 @@ void QgsComposerLabel::replaceDateText( QString& text ) const
   {
     //check if there is a bracket just after $CURRENT_DATE
     QString formatText;
-    int openingBracketPos = text.indexOf( "(", currentDatePos );
-    int closingBracketPos = text.indexOf( ")", openingBracketPos + 1 );
+    int openingBracketPos = text.indexOf( '(', currentDatePos );
+    int closingBracketPos = text.indexOf( ')', openingBracketPos + 1 );
     if ( openingBracketPos != -1 &&
          closingBracketPos != -1 &&
          ( closingBracketPos - openingBracketPos ) > 1 &&

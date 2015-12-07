@@ -445,13 +445,13 @@ bool QgsComposerAttributeTable::getFeatureAttributes( QList<QgsAttributeMap> &at
       int idx = mVectorLayer->fieldNameIndex(( *columnIt )->attribute() );
       if ( idx != -1 )
       {
-        attributeMaps.last().insert( i, f.attributes()[idx] );
+        attributeMaps.last().insert( i, f.attributes().at( idx ) );
       }
       else
       {
         // Lets assume it's an expression
         QgsExpression* expression = new QgsExpression(( *columnIt )->attribute() );
-        context->lastScope()->setVariable( QString( "_rownum_" ), counter + 1 );
+        context->lastScope()->setVariable( QString( "row_number" ), counter + 1 );
         expression->prepare( context.data() );
         QVariant value = expression->evaluate( context.data() );
         attributeMaps.last().insert( i, value.toString() );
@@ -476,7 +476,7 @@ bool QgsComposerAttributeTable::getFeatureAttributes( QList<QgsAttributeMap> &at
   return true;
 }
 
-void QgsComposerAttributeTable::removeLayer( QString layerId )
+void QgsComposerAttributeTable::removeLayer( const QString& layerId )
 {
   if ( mVectorLayer )
   {
@@ -501,7 +501,7 @@ void QgsComposerAttributeTable::setSceneRect( const QRectF& rectangle )
   refreshAttributes();
 }
 
-void QgsComposerAttributeTable::setSortAttributes( const QList<QPair<int, bool> > att )
+void QgsComposerAttributeTable::setSortAttributes( const QList<QPair<int, bool> >& att )
 {
   //first, clear existing sort by ranks
   QList<QgsComposerTableColumn*>::iterator columnIt = mColumns.begin();

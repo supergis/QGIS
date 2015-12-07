@@ -198,6 +198,8 @@ QgsMapSettings QgsComposerMap::mapSettings( const QgsRectangle& extent, const QS
 {
   const QgsMapSettings &ms = mComposition->mapSettings();
 
+  QScopedPointer< QgsExpressionContext > expressionContext( createExpressionContext() );
+
   QgsMapSettings jobMapSettings;
   jobMapSettings.setExtent( extent );
   jobMapSettings.setOutputSize( size.toSize() );
@@ -208,7 +210,7 @@ QgsMapSettings QgsComposerMap::mapSettings( const QgsRectangle& extent, const QS
   jobMapSettings.setRotation( mEvaluatedMapRotation );
 
   //set layers to render
-  QStringList theLayerSet = layersToRender();
+  QStringList theLayerSet = layersToRender( expressionContext.data() );
   if ( -1 != mCurrentExportLayer )
   {
     //exporting with separate layers (eg, to svg layers), so we only want to render a single map layer
@@ -219,7 +221,7 @@ QgsMapSettings QgsComposerMap::mapSettings( const QgsRectangle& extent, const QS
       : QStringList(); //exporting decorations such as map frame/grid/overview, so no map layers required
   }
   jobMapSettings.setLayers( theLayerSet );
-  jobMapSettings.setLayerStyleOverrides( layerStyleOverridesToRender() );
+  jobMapSettings.setLayerStyleOverrides( layerStyleOverridesToRender( *expressionContext ) );
   jobMapSettings.setDestinationCrs( ms.destinationCrs() );
   jobMapSettings.setCrsTransformEnabled( ms.hasCrsTransformEnabled() );
   jobMapSettings.setFlags( ms.flags() );
@@ -235,9 +237,6 @@ QgsMapSettings QgsComposerMap::mapSettings( const QgsRectangle& extent, const QS
   QgsExpressionContext* context = createExpressionContext();
   jobMapSettings.setExpressionContext( *context );
   delete context;
-
-  //update $map variable. Use QgsComposerItem's id since that is user-definable
-  QgsExpression::setSpecialColumn( "$map", QgsComposerItem::id() );
 
   // composer-specific overrides of flags
   jobMapSettings.setFlag( QgsMapSettings::ForceVectorOutput ); // force vector output (no caching of marker images etc.)
@@ -526,12 +525,20 @@ const QgsMapRenderer *QgsComposerMap::mapRenderer() const
   Q_NOWARN_DEPRECATED_POP
 }
 
-QStringList QgsComposerMap::layersToRender() const
+QStringList QgsComposerMap::layersToRender( const QgsExpressionContext* context ) const
 {
+  const QgsExpressionContext* evalContext = context;
+  QScopedPointer< QgsExpressionContext > scopedContext;
+  if ( !evalContext )
+  {
+    scopedContext.reset( createExpressionContext() );
+    evalContext = scopedContext.data();
+  }
+
   QStringList renderLayerSet;
 
   QVariant exprVal;
-  if ( dataDefinedEvaluate( QgsComposerObject::MapStylePreset, exprVal ) )
+  if ( dataDefinedEvaluate( QgsComposerObject::MapStylePreset, exprVal, *evalContext ) )
   {
     QString presetName = exprVal.toString();
 
@@ -552,13 +559,13 @@ QStringList QgsComposerMap::layersToRender() const
     }
   }
 
-  if ( dataDefinedEvaluate( QgsComposerObject::MapLayers, exprVal ) )
+  if ( dataDefinedEvaluate( QgsComposerObject::MapLayers, exprVal, *evalContext ) )
   {
     renderLayerSet.clear();
 
-    QStringList layerNames = exprVal.toString().split( "|" );
+    QStringList layerNames = exprVal.toString().split( '|' );
     //need to convert layer names to layer ids
-    Q_FOREACH ( QString name, layerNames )
+    Q_FOREACH ( const QString& name, layerNames )
     {
       QList< QgsMapLayer* > matchingLayers = QgsMapLayerRegistry::instance()->mapLayersByName( name );
       Q_FOREACH ( QgsMapLayer* layer, matchingLayers )
@@ -586,10 +593,10 @@ QStringList QgsComposerMap::layersToRender() const
   return renderLayerSet;
 }
 
-QMap<QString, QString> QgsComposerMap::layerStyleOverridesToRender() const
+QMap<QString, QString> QgsComposerMap::layerStyleOverridesToRender( const QgsExpressionContext& context ) const
 {
   QVariant exprVal;
-  if ( dataDefinedEvaluate( QgsComposerObject::MapStylePreset, exprVal ) )
+  if ( dataDefinedEvaluate( QgsComposerObject::MapStylePreset, exprVal, context ) )
   {
     QString presetName = exprVal.toString();
 
@@ -1418,6 +1425,7 @@ bool QgsComposerMap::readXML( const QDomElement& itemElem, const QDomDocument& d
   {
     QDomElement layerSetElem = layerSetNodeList.at( 0 ).toElement();
     QDomNodeList layerIdNodeList = layerSetElem.elementsByTagName( "Layer" );
+    layerSet.reserve( layerIdNodeList.size() );
     for ( int i = 0; i < layerIdNodeList.size(); ++i )
     {
       const QDomElement& layerIdElement = layerIdNodeList.at( i ).toElement();
@@ -1601,7 +1609,7 @@ void QgsComposerMap::setLayerStyleOverrides( const QMap<QString, QString>& overr
 void QgsComposerMap::storeCurrentLayerStyles()
 {
   mLayerStyleOverrides.clear();
-  foreach ( const QString& layerID, mLayerSet )
+  Q_FOREACH ( const QString& layerID, mLayerSet )
   {
     if ( QgsMapLayer* layer = QgsMapLayerRegistry::instance()->mapLayer( layerID ) )
     {
@@ -1740,7 +1748,7 @@ QPen QgsComposerMap::gridPen() const
   QPen p;
   if ( g->lineSymbol() )
   {
-    QgsLineSymbolV2* line = dynamic_cast<QgsLineSymbolV2*>( g->lineSymbol()->clone() );
+    QgsLineSymbolV2* line = g->lineSymbol()->clone();
     if ( !line )
     {
       return p;
@@ -1993,14 +2001,24 @@ void QgsComposerMap::updateBoundingRect()
 {
   QRectF rectangle = rect();
   double frameExtension = mFrame ? pen().widthF() / 2.0 : 0.0;
-  double maxGridExtension = mGridStack ? mGridStack->maxGridExtension() : 0;
 
-  double maxExtension = qMax( frameExtension, maxGridExtension );
+  double topExtension = 0.0;
+  double rightExtension = 0.0;
+  double bottomExtension = 0.0;
+  double leftExtension = 0.0;
 
-  rectangle.setLeft( rectangle.left() - maxExtension );
-  rectangle.setRight( rectangle.right() + maxExtension );
-  rectangle.setTop( rectangle.top() - maxExtension );
-  rectangle.setBottom( rectangle.bottom() + maxExtension );
+  if ( mGridStack )
+    mGridStack->calculateMaxGridExtension( topExtension, rightExtension, bottomExtension, leftExtension );
+
+  topExtension = qMax( topExtension, frameExtension );
+  rightExtension = qMax( rightExtension, frameExtension );
+  bottomExtension = qMax( bottomExtension, frameExtension );
+  leftExtension = qMax( leftExtension, frameExtension );
+
+  rectangle.setLeft( rectangle.left() - leftExtension );
+  rectangle.setRight( rectangle.right() + rightExtension );
+  rectangle.setTop( rectangle.top() - topExtension );
+  rectangle.setBottom( rectangle.bottom() + bottomExtension );
   if ( rectangle != mCurrentRectangle )
   {
     prepareGeometryChange();
@@ -2120,6 +2138,24 @@ void QgsComposerMap::requestedExtent( QgsRectangle& extent ) const
   }
 }
 
+QgsExpressionContext* QgsComposerMap::createExpressionContext() const
+{
+  QgsExpressionContext* context = QgsComposerItem::createExpressionContext();
+
+  //Can't utilise QgsExpressionContextUtils::mapSettingsScope as we don't always
+  //have a QgsMapSettings object available when the context is required, so we manually
+  //add the same variables here
+  QgsExpressionContextScope* scope = new QgsExpressionContextScope( tr( "Map Settings" ) );
+
+  //use QgsComposerItem's id, not map item's ID, since that is user-definable
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "map_id", QgsComposerItem::id(), true ) );
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "map_rotation", mMapRotation, true ) );
+  scope->addVariable( QgsExpressionContextScope::StaticVariable( "map_scale", scale(), true ) );
+  context->appendScope( scope );
+
+  return context;
+}
+
 double QgsComposerMap::mapUnitsToMM() const
 {
   double extentWidth = currentMapExtent()->width();
@@ -2160,7 +2196,7 @@ void QgsComposerMap::refreshDataDefinedProperty( const QgsComposerObject::DataDe
        property == QgsComposerObject::AllProperties )
   {
     QgsRectangle beforeExtent = *currentMapExtent();
-    refreshMapExtents();
+    refreshMapExtents( evalContext );
     emit itemChanged();
     if ( *currentMapExtent() != beforeExtent )
     {

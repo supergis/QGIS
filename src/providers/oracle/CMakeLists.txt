@@ -13,6 +13,8 @@ SET(ORACLE_SRCS
   qgsoracletablemodel.cpp
   qgsoraclecolumntypethread.cpp
   qgsoraclefeatureiterator.cpp
+  qgsoracleconnpool.cpp
+  qgsoracleexpressioncompiler.cpp
 )
 
 SET(ORACLE_MOC_HDRS
@@ -23,6 +25,8 @@ SET(ORACLE_MOC_HDRS
   qgsoraclenewconnection.h
   qgsoracletablemodel.h
   qgsoraclecolumntypethread.h
+  qgsoracleconnpool.h
+  qgsoracleexpressioncompiler.h
 )
 
 
@@ -35,8 +39,14 @@ INCLUDE_DIRECTORIES(
   ../../core
   ../../core/geometry
   ../../gui
+)
+INCLUDE_DIRECTORIES(SYSTEM
   ${GEOS_INCLUDE_DIR}
+)
+INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_BINARY_DIR}/../../ui
+)
+INCLUDE_DIRECTORIES(SYSTEM
   ${QT_QTSQL_INCLUDEDIR}
   ${QSCINTILLA_INCLUDE_DIR}
 )

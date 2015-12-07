@@ -216,7 +216,7 @@ void QgsWFSSourceSelect::capabilitiesReplyFinished()
   QgsWFSCapabilities::GetCapabilities caps = mCapabilities->capabilities();
 
   mAvailableCRS.clear();
-  foreach ( QgsWFSCapabilities::FeatureType featureType, caps.featureTypes )
+  Q_FOREACH ( const QgsWFSCapabilities::FeatureType& featureType, caps.featureTypes )
   {
     // insert the typenames, titles and abstracts into the tree view
     QStandardItem* titleItem = new QStandardItem( featureType.title );
@@ -234,7 +234,7 @@ void QgsWFSSourceSelect::capabilitiesReplyFinished()
 
     // insert the available CRS into mAvailableCRS
     std::list<QString> currentCRSList;
-    foreach ( QString crs, featureType.crslist )
+    Q_FOREACH ( const QString& crs, featureType.crslist )
     {
       currentCRSList.push_back( crs );
     }
@@ -358,11 +358,11 @@ void QgsWFSSourceSelect::addLayer()
   if ( extentVariant.isValid() )
   {
     QString extentString = extentVariant.toString();
-    QStringList minMaxSplit = extentString.split( ":" );
+    QStringList minMaxSplit = extentString.split( ':' );
     if ( minMaxSplit.size() > 1 )
     {
-      QStringList xyMinSplit = minMaxSplit[0].split( "," );
-      QStringList xyMaxSplit = minMaxSplit[1].split( "," );
+      QStringList xyMinSplit = minMaxSplit[0].split( ',' );
+      QStringList xyMaxSplit = minMaxSplit[1].split( ',' );
       if ( xyMinSplit.size() > 1 && xyMaxSplit.size() > 1 )
       {
         extent.set( xyMinSplit[0].toDouble(), xyMinSplit[1].toDouble(),
@@ -528,7 +528,7 @@ void QgsWFSSourceSelect::on_btnSave_clicked()
 
 void QgsWFSSourceSelect::on_btnLoad_clicked()
 {
-  QString fileName = QFileDialog::getOpenFileName( this, tr( "Load connections" ), ".",
+  QString fileName = QFileDialog::getOpenFileName( this, tr( "Load connections" ), QDir::homePath(),
                      tr( "XML files (*.xml *XML)" ) );
   if ( fileName.isEmpty() )
   {
@@ -562,7 +562,7 @@ void QgsWFSSourceSelect::buildQueryButtonClicked()
   buildQuery( treeView->selectionModel()->currentIndex() );
 }
 
-void QgsWFSSourceSelect::filterChanged( QString text )
+void QgsWFSSourceSelect::filterChanged( const QString& text )
 {
   QgsDebugMsg( "WFS FeatureType filter changed to :" + text );
   QRegExp::PatternSyntax mySyntax = QRegExp::PatternSyntax( QRegExp::RegExp );

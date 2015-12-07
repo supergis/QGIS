@@ -135,7 +135,7 @@ QgsFeatureRendererV2 * QgsHighlight::getRenderer( QgsRenderContext & context, co
   }
   if ( renderer )
   {
-    foreach ( QgsSymbolV2* symbol, renderer->symbols( context ) )
+    Q_FOREACH ( QgsSymbolV2* symbol, renderer->symbols( context ) )
     {
       if ( !symbol ) continue;
       setSymbol( symbol, context, color, fillColor );
@@ -206,7 +206,7 @@ void QgsHighlight::setWidth( int width )
   mPen.setWidth( width );
 }
 
-void QgsHighlight::paintPoint( QPainter *p, QgsPoint point )
+void QgsHighlight::paintPoint( QPainter *p, const QgsPoint& point )
 {
   QPolygonF r( 5 );
 

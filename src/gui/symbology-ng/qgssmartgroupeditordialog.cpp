@@ -57,12 +57,12 @@ QString QgsSmartGroupCondition::parameter()
   return mCondLineEdit->text();
 }
 
-void QgsSmartGroupCondition::setConstraint( QString constraint )
+void QgsSmartGroupCondition::setConstraint( const QString& constraint )
 {
   mCondCombo->setCurrentIndex( mCondCombo->findData( QVariant( constraint ) ) );
 }
 
-void QgsSmartGroupCondition::setParameter( QString param )
+void QgsSmartGroupCondition::setParameter( const QString& param )
 {
   mCondLineEdit->setText( param );
 }
@@ -106,7 +106,7 @@ void QgsSmartGroupEditorDialog::addCondition()
   // enable the remove buttons when 2nd condition is added
   if ( mConditionMap.count() == 1 )
   {
-    foreach ( QgsSmartGroupCondition *condition, mConditionMap.values() )
+    Q_FOREACH ( QgsSmartGroupCondition *condition, mConditionMap.values() )
     {
       condition->hideRemoveButton( false );
     }
@@ -128,7 +128,7 @@ void QgsSmartGroupEditorDialog::removeCondition( int id )
   // hide the remove button of the last condition when 2nd last is removed
   if ( mConditionMap.count() == 2 )
   {
-    foreach ( QgsSmartGroupCondition* condition, mConditionMap.values() )
+    Q_FOREACH ( QgsSmartGroupCondition* condition, mConditionMap.values() )
     {
       condition->hideRemoveButton( true );
     }
@@ -142,7 +142,7 @@ QgsSmartConditionMap QgsSmartGroupEditorDialog::conditionMap()
 {
   QgsSmartConditionMap conditions;
 
-  foreach ( QgsSmartGroupCondition* condition, mConditionMap.values() )
+  Q_FOREACH ( QgsSmartGroupCondition* condition, mConditionMap.values() )
   {
     conditions.insert( condition->constraint(), condition->parameter() );
   }
@@ -161,17 +161,17 @@ void QgsSmartGroupEditorDialog::setConditionMap( QgsSmartConditionMap map )
   constraints << "tag" << "group" << "name" << "!tag" << "!group" << "!name";
 
   // clear any defaults
-  foreach ( int id, mConditionMap.keys() )
+  Q_FOREACH ( int id, mConditionMap.keys() )
   {
     QgsSmartGroupCondition *cond = mConditionMap.take( id );
     delete cond;
   }
 
   //set the constraints
-  foreach ( const QString &constr, constraints )
+  Q_FOREACH ( const QString &constr, constraints )
   {
     QStringList params = map.values( constr );
-    foreach ( const QString &param, params )
+    Q_FOREACH ( const QString &param, params )
     {
       QgsSmartGroupCondition *cond = new QgsSmartGroupCondition( mCondCount, this );
       mLayout->addWidget( cond, mCondCount, 0, 1, 1 );
@@ -187,12 +187,12 @@ void QgsSmartGroupEditorDialog::setConditionMap( QgsSmartConditionMap map )
   }
 }
 
-void QgsSmartGroupEditorDialog::setOperator( QString op )
+void QgsSmartGroupEditorDialog::setOperator( const QString& op )
 {
   mAndOrCombo->setCurrentIndex( mAndOrCombo->findData( QVariant( op ) ) );
 }
 
-void QgsSmartGroupEditorDialog::setSmartgroupName( QString name )
+void QgsSmartGroupEditorDialog::setSmartgroupName( const QString& name )
 {
   mNameLineEdit->setText( name );
 }

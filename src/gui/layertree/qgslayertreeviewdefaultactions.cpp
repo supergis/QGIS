@@ -51,7 +51,7 @@ QAction* QgsLayerTreeViewDefaultActions::actionShowInOverview( QObject* parent )
   if ( !node )
     return 0;
 
-  QAction* a = new QAction( tr( "&Show in overview" ), parent );
+  QAction* a = new QAction( tr( "&Show in Overview" ), parent );
   connect( a, SIGNAL( triggered() ), this, SLOT( showInOverview() ) );
   a->setCheckable( true );
   a->setChecked( node->customProperty( "overview", 0 ).toInt() );
@@ -110,6 +110,19 @@ QAction* QgsLayerTreeViewDefaultActions::actionGroupSelected( QObject* parent )
   return a;
 }
 
+QAction* QgsLayerTreeViewDefaultActions::actionMutuallyExclusiveGroup( QObject* parent )
+{
+  QgsLayerTreeNode* node = mView->currentNode();
+  if ( !node || !QgsLayerTree::isGroup( node ) )
+    return 0;
+
+  QAction* a = new QAction( tr( "Mutually Exclusive Group" ), parent );
+  a->setCheckable( true );
+  a->setChecked( QgsLayerTree::toGroup( node )->isMutuallyExclusive() );
+  connect( a, SIGNAL( triggered() ), this, SLOT( mutuallyExclusiveGroup() ) );
+  return a;
+}
+
 void QgsLayerTreeViewDefaultActions::addGroup()
 {
   QgsLayerTreeGroup* group = mView->currentGroupNode();
@@ -122,7 +135,7 @@ void QgsLayerTreeViewDefaultActions::addGroup()
 
 void QgsLayerTreeViewDefaultActions::removeGroupOrLayer()
 {
-  foreach ( QgsLayerTreeNode* node, mView->selectedNodes( true ) )
+  Q_FOREACH ( QgsLayerTreeNode* node, mView->selectedNodes( true ) )
   {
     // could be more efficient if working directly with ranges instead of individual nodes
     qobject_cast<QgsLayerTreeGroup*>( node->parent() )->removeChildNode( node );
@@ -172,7 +185,7 @@ void QgsLayerTreeViewDefaultActions::zoomToGroup( QgsMapCanvas* canvas )
     return;
 
   QList<QgsMapLayer*> layers;
-  foreach ( QString layerId, groupNode->findLayerIds() )
+  Q_FOREACH ( const QString& layerId, groupNode->findLayerIds() )
     layers << QgsMapLayerRegistry::instance()->mapLayer( layerId );
 
   zoomToLayers( canvas, layers );
@@ -241,7 +254,7 @@ void QgsLayerTreeViewDefaultActions::zoomToLayers( QgsMapCanvas* canvas, const Q
 QString QgsLayerTreeViewDefaultActions::uniqueGroupName( QgsLayerTreeGroup* parentGroup )
 {
   QString prefix = parentGroup == mView->layerTreeModel()->rootGroup() ? "group" : "sub-group";
-  QString newName = prefix + "1";
+  QString newName = prefix + '1';
   for ( int i = 2; parentGroup->findGroup( newName ); ++i )
     newName = prefix + QString::number( i );
   return newName;
@@ -275,12 +288,12 @@ void QgsLayerTreeViewDefaultActions::groupSelected()
   int insertIdx = parentGroup->children().indexOf( nodes[0] );
 
   QgsLayerTreeGroup* newGroup = new QgsLayerTreeGroup( uniqueGroupName( parentGroup ) );
-  foreach ( QgsLayerTreeNode* node, nodes )
+  Q_FOREACH ( QgsLayerTreeNode* node, nodes )
     newGroup->addChildNode( node->clone() );
 
   parentGroup->insertChildNode( insertIdx, newGroup );
 
-  foreach ( QgsLayerTreeNode* node, nodes )
+  Q_FOREACH ( QgsLayerTreeNode* node, nodes )
   {
     QgsLayerTreeGroup* group = qobject_cast<QgsLayerTreeGroup*>( node->parent() );
     if ( group )
@@ -288,4 +301,13 @@ void QgsLayerTreeViewDefaultActions::groupSelected()
   }
 
   mView->setCurrentIndex( mView->layerTreeModel()->node2index( newGroup ) );
+}
+
+void QgsLayerTreeViewDefaultActions::mutuallyExclusiveGroup()
+{
+  QgsLayerTreeNode* node = mView->currentNode();
+  if ( !node || !QgsLayerTree::isGroup( node ) )
+    return;
+
+  QgsLayerTree::toGroup( node )->setIsMutuallyExclusive( !QgsLayerTree::toGroup( node )->isMutuallyExclusive() );
 }

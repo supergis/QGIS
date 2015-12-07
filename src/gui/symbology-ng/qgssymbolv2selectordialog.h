@@ -39,6 +39,10 @@ class QgsLineSymbolV2;
 class QgsMarkerSymbolLayerV2;
 class QgsLineSymbolLayerV2;
 
+class QgsMapCanvas;
+
+///@cond
+//not part of public API
 class DataDefinedRestorer: public QObject
 {
     Q_OBJECT
@@ -65,6 +69,7 @@ class DataDefinedRestorer: public QObject
 
     void save();
 };
+///@endcond
 
 class GUI_EXPORT QgsSymbolV2SelectorDialog : public QDialog, private Ui::QgsSymbolV2SelectorDialogBase
 {
@@ -72,9 +77,34 @@ class GUI_EXPORT QgsSymbolV2SelectorDialog : public QDialog, private Ui::QgsSymb
 
   public:
     QgsSymbolV2SelectorDialog( QgsSymbolV2* symbol, QgsStyleV2* style, const QgsVectorLayer* vl, QWidget* parent = 0, bool embedded = false );
+    ~QgsSymbolV2SelectorDialog();
 
     //! return menu for "advanced" button - create it if doesn't exist and show the advanced button
     QMenu* advancedMenu();
+
+    /** Sets the optional expression context used for the widget. This expression context is used for
+     * evaluating data defined symbol properties and for populating based expression widgets in
+     * the layer widget.
+     * @param context expression context pointer. Ownership is transferred to the dialog.
+     * @note added in QGIS 2.12
+     * @see expressionContext()
+     */
+    void setExpressionContext( QgsExpressionContext* context );
+
+    /** Returns the expression context used for the dialog, if set. This expression context is used for
+     * evaluating data defined symbol properties and for populating based expression widgets in
+     * the dialog.
+     * @note added in QGIS 2.12
+     * @see setExpressionContext()
+     */
+    QgsExpressionContext* expressionContext() const { return mPresetExpressionContext.data(); }
+
+    /** Sets the map canvas associated with the dialog. This allows the widget to retrieve the current
+     * map scale and other properties from the canvas.
+     * @param canvas map canvas
+     * @note added in QGIS 2.12
+     */
+    void setMapCanvas( QgsMapCanvas* canvas );
 
   protected:
     //! Reimplements dialog keyPress event so we can ignore it
@@ -132,6 +162,9 @@ class GUI_EXPORT QgsSymbolV2SelectorDialog : public QDialog, private Ui::QgsSymb
 
   private:
     QScopedPointer<DataDefinedRestorer> mDataDefineRestorer;
+    QScopedPointer< QgsExpressionContext > mPresetExpressionContext;
+
+    QgsMapCanvas* mMapCanvas;
 };
 
 #endif

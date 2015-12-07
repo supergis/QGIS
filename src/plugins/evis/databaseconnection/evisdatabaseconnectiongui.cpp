@@ -105,7 +105,7 @@ eVisDatabaseConnectionGui::~eVisDatabaseConnectionGui()
 * @param xCoordinate - Name of the field containing the x coordinate
 * @param yCoordinate - Name of the field containing the y coordinate
 */
-void eVisDatabaseConnectionGui::drawNewVectorLayer( QString layerName, QString xCoordinate, QString yCoordinate )
+void eVisDatabaseConnectionGui::drawNewVectorLayer( const QString& layerName, const QString& xCoordinate, const QString& yCoordinate )
 {
   //if coorindate fields are defined, load as a delimited text layer
   if ( !xCoordinate.isEmpty() && !yCoordinate.isEmpty() && mTempOutputFileList->size() > 0 )
@@ -285,11 +285,11 @@ void eVisDatabaseConnectionGui::on_pbtnConnect_clicked()
     //Try to connect the database connection object
     if ( mDatabaseConnection->connect() )
     {
-      teditConsole->append( tr( "Connection to [%1.%2] established" ).arg( leDatabaseHost->text() ).arg( leDatabaseName->text() ) );
+      teditConsole->append( tr( "Connection to [%1.%2] established" ).arg( leDatabaseHost->text(), leDatabaseName->text() ) );
       lblConnectionStatus->setText( tr( "connected" ) );
 
       //List the tables in the database
-      teditConsole->append( tr( "Tables" ) + ":" );
+      teditConsole->append( tr( "Tables" ) + ':' );
       QStringList myTableList = mDatabaseConnection->tables();
       for ( int myIterator = 0; myIterator < myTableList.size(); myIterator++ )
       {
@@ -299,7 +299,7 @@ void eVisDatabaseConnectionGui::on_pbtnConnect_clicked()
     else
     {
       teditConsole->append( tr( "Connection to [%1.%2] failed: %3" )
-                            .arg( leDatabaseHost->text() ).arg( leDatabaseName->text() ).arg( mDatabaseConnection->lastError() ) );
+                            .arg( leDatabaseHost->text(), leDatabaseName->text(), mDatabaseConnection->lastError() ) );
     }
   }
 }
@@ -313,7 +313,7 @@ void eVisDatabaseConnectionGui::on_pbtnLoadPredefinedQueries_clicked()
   //There probably needs to be some more error checking, but works for now.
 
   //Select the XML file to parse
-  QString myFilename = QFileDialog::getOpenFileName( this, tr( "Open File" ), ".", "XML ( *.xml )" );
+  QString myFilename = QFileDialog::getOpenFileName( this, tr( "Open File" ), QDir::homePath(), "XML ( *.xml )" );
   if ( myFilename != "" )
   {
     //Display the name of the file being parsed
@@ -453,9 +453,9 @@ void eVisDatabaseConnectionGui::on_cboxPredefinedQueryList_currentIndexChanged( 
 void eVisDatabaseConnectionGui::on_pbtnOpenFile_clicked()
 {
   if ( cboxDatabaseType->currentText() == "MSAccess" )
-    leDatabaseName->setText( QFileDialog::getOpenFileName( this, tr( "Open File" ), ".", "MSAccess ( *.mdb )" ) );
+    leDatabaseName->setText( QFileDialog::getOpenFileName( this, tr( "Open File" ), QDir::homePath(), "MSAccess ( *.mdb )" ) );
   else
-    leDatabaseName->setText( QFileDialog::getOpenFileName( this, tr( "Open File" ), ".", "Sqlite ( *.db )" ) );
+    leDatabaseName->setText( QFileDialog::getOpenFileName( this, tr( "Open File" ), QDir::homePath(), "Sqlite ( *.db )" ) );
 }
 
 /**

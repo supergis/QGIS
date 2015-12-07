@@ -12,7 +12,7 @@ class QgsCompoundCurveV2: public QgsCurveV2
 
     virtual QString geometryType() const;
     virtual int dimension() const;
-    virtual QgsAbstractGeometryV2* clone() const;
+    virtual QgsCompoundCurveV2* clone() const;
     virtual void clear();
 
     virtual QgsRectangle calculateBoundingBox() const;
@@ -60,4 +60,18 @@ class QgsCompoundCurveV2: public QgsCurveV2
     void sumUpArea( double& sum ) const;
 
     bool hasCurvedSegments() const;
+
+    /** Returns approximate rotation angle for a vertex. Usually average angle between adjacent segments.
+        @param vertex the vertex id
+        @return rotation in radians, clockwise from north*/
+    double vertexAngle( const QgsVertexId& vertex ) const;
+
+    virtual QgsCompoundCurveV2* reversed() const /Factory/;
+
+    virtual bool addZValue( double zValue = 0 );
+    virtual bool addMValue( double mValue = 0 );
+
+    virtual bool dropZValue();
+    virtual bool dropMValue();
+
 };

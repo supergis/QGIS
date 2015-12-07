@@ -34,7 +34,7 @@ QgsVectorLayerJoinBuffer::~QgsVectorLayerJoinBuffer()
 static QList<QgsVectorLayer*> _outEdges( QgsVectorLayer* vl )
 {
   QList<QgsVectorLayer*> lst;
-  foreach ( const QgsVectorJoinInfo& info, vl->vectorJoins() )
+  Q_FOREACH ( const QgsVectorJoinInfo& info, vl->vectorJoins() )
   {
     if ( QgsVectorLayer* joinVl = qobject_cast<QgsVectorLayer*>( QgsMapLayerRegistry::instance()->mapLayer( info.joinLayerId ) ) )
       lst << joinVl;
@@ -49,7 +49,7 @@ static bool _hasCycleDFS( QgsVectorLayer* n, QHash<QgsVectorLayer*, int>& mark )
   if ( mark.value( n ) == 0 ) // not visited
   {
     mark[n] = 1; // temporary
-    foreach ( QgsVectorLayer* m, _outEdges( n ) )
+    Q_FOREACH ( QgsVectorLayer* m, _outEdges( n ) )
     {
       if ( _hasCycleDFS( m, mark ) )
         return true;
@@ -153,12 +153,12 @@ void QgsVectorLayerJoinBuffer::cacheJoinLayer( QgsVectorJoinInfo& joinInfo )
     while ( fit.nextFeature( f ) )
     {
       QgsAttributes attrs = f.attributes();
-      QString key = attrs[joinFieldIndex].toString();
+      QString key = attrs.at( joinFieldIndex ).toString();
       if ( hasSubset )
       {
         QgsAttributes subsetAttrs( subsetIndices.count() );
         for ( int i = 0; i < subsetIndices.count(); ++i )
-          subsetAttrs[i] = attrs[ subsetIndices[i] ];
+          subsetAttrs[i] = attrs.at( subsetIndices.at( i ) );
         joinInfo.cachedAttributes.insert( key, subsetAttrs );
       }
       else
@@ -223,7 +223,7 @@ void QgsVectorLayerJoinBuffer::updateFields( QgsFields& fields )
 
     if ( joinIt->prefix.isNull() )
     {
-      prefix = joinLayer->name() + "_";
+      prefix = joinLayer->name() + '_';
     }
     else
     {
@@ -287,7 +287,7 @@ void QgsVectorLayerJoinBuffer::writeXml( QDomNode& layer_node, QDomDocument& doc
     if ( joinIt->joinFieldNamesSubset() )
     {
       QDomElement subsetElem = document.createElement( "joinFieldsSubset" );
-      foreach ( QString fieldName, *joinIt->joinFieldNamesSubset() )
+      Q_FOREACH ( const QString& fieldName, *joinIt->joinFieldNamesSubset() )
       {
         QDomElement fieldElem = document.createElement( "field" );
         fieldElem.setAttribute( "name", fieldName );

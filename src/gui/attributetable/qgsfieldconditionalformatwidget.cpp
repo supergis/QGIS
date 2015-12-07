@@ -92,14 +92,14 @@ void QgsFieldConditionalFormatWidget::setLayer( QgsVectorLayer *theLayer )
   mFieldCombo->setCurrentIndex( 0 );
 }
 
-void QgsFieldConditionalFormatWidget::ruleClicked( QModelIndex index )
+void QgsFieldConditionalFormatWidget::ruleClicked( const QModelIndex& index )
 {
   QList<QgsConditionalStyle> styles = getStyles();
   QgsConditionalStyle style = styles.at( index.row() );
   editStyle( index.row(), style );
 }
 
-void QgsFieldConditionalFormatWidget::editStyle( int editIndex, QgsConditionalStyle style )
+void QgsFieldConditionalFormatWidget::editStyle( int editIndex, const QgsConditionalStyle& style )
 {
   pages->setCurrentIndex( 1 );
   mEditIndex = editIndex;
@@ -108,13 +108,13 @@ void QgsFieldConditionalFormatWidget::editStyle( int editIndex, QgsConditionalSt
   loadStyle( style );
 }
 
-void QgsFieldConditionalFormatWidget::loadStyle( QgsConditionalStyle style )
+void QgsFieldConditionalFormatWidget::loadStyle( const QgsConditionalStyle& style )
 {
   mRuleEdit->setText( style.rule() );
   mNameEdit->setText( style.name() );
   setFormattingFromStyle( style );
 }
-void QgsFieldConditionalFormatWidget::setFormattingFromStyle( QgsConditionalStyle style )
+void QgsFieldConditionalFormatWidget::setFormattingFromStyle( const QgsConditionalStyle& style )
 {
   btnBackgroundColor->setColor( style.backgroundColor() );
   btnTextColor->setColor( style.textColor() );
@@ -218,11 +218,11 @@ void QgsFieldConditionalFormatWidget::reset()
 }
 
 
-void QgsFieldConditionalFormatWidget::setPresets( QList<QgsConditionalStyle> styles )
+void QgsFieldConditionalFormatWidget::setPresets( const QList<QgsConditionalStyle>& styles )
 {
   mPresets.clear();
   mPresetsModel->clear();
-  foreach ( QgsConditionalStyle style, styles )
+  Q_FOREACH ( const QgsConditionalStyle& style, styles )
   {
     if ( style.isValid() )
     {
@@ -322,7 +322,7 @@ void QgsFieldConditionalFormatWidget::reloadStyles()
 {
   mModel->clear();
 
-  foreach ( QgsConditionalStyle style, getStyles() )
+  Q_FOREACH ( const QgsConditionalStyle& style, getStyles() )
   {
     QStandardItem* item = new QStandardItem( style.displayText() );
     item->setIcon( QIcon( style.renderPreview() ) );
@@ -330,7 +330,7 @@ void QgsFieldConditionalFormatWidget::reloadStyles()
   }
 }
 
-void QgsFieldConditionalFormatWidget::fieldChanged( QString fieldName )
+void QgsFieldConditionalFormatWidget::fieldChanged( const QString& fieldName )
 {
   Q_UNUSED( fieldName );
   reloadStyles();

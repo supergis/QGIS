@@ -185,11 +185,14 @@ void QgsStyleV2ManagerDialog::on_tabItemType_currentChanged( int )
   // when in Color Ramp tab, add menu to add item button
   if ( currentItemType() == 3 )
   {
+    btnShare->menu()->actions().at( 0 )->setVisible( false );
+    btnShare->menu()->actions().at( 1 )->setVisible( false );
+
     QStringList rampTypes;
     rampTypes << tr( "Gradient" ) << tr( "Random" ) << tr( "ColorBrewer" );
     rampTypes << tr( "cpt-city" ); // todo, only for rasters?
     QMenu* menu = new QMenu( btnAddItem );
-    foreach ( QString rampType, rampTypes )
+    Q_FOREACH ( const QString& rampType, rampTypes )
     {
       menu->addAction( rampType );
     }
@@ -199,6 +202,9 @@ void QgsStyleV2ManagerDialog::on_tabItemType_currentChanged( int )
   }
   else
   {
+    btnShare->menu()->actions().at( 0 )->setVisible( true );
+    btnShare->menu()->actions().at( 1 )->setVisible( true );
+
     if ( btnAddItem->menu() )
     {
       disconnect( btnAddItem->menu(), SIGNAL( triggered( QAction* ) ),
@@ -232,7 +238,7 @@ void QgsStyleV2ManagerDialog::populateList()
   groupChanged( groupTree->selectionModel()->currentIndex() );
 }
 
-void QgsStyleV2ManagerDialog::populateSymbols( QStringList symbolNames, bool check )
+void QgsStyleV2ManagerDialog::populateSymbols( const QStringList& symbolNames, bool check )
 {
   QStandardItemModel* model = qobject_cast<QStandardItemModel*>( listItems->model() );
   model->clear();
@@ -259,7 +265,7 @@ void QgsStyleV2ManagerDialog::populateSymbols( QStringList symbolNames, bool che
 }
 
 
-void QgsStyleV2ManagerDialog::populateColorRamps( QStringList colorRamps, bool check )
+void QgsStyleV2ManagerDialog::populateColorRamps( const QStringList& colorRamps, bool check )
 {
   QStandardItemModel* model = qobject_cast<QStandardItemModel*>( listItems->model() );
   model->clear();
@@ -685,7 +691,7 @@ void QgsStyleV2ManagerDialog::removeItem()
 bool QgsStyleV2ManagerDialog::removeSymbol()
 {
   QModelIndexList indexes = listItems->selectionModel()->selectedIndexes();
-  foreach ( QModelIndex index, indexes )
+  Q_FOREACH ( const QModelIndex& index, indexes )
   {
     QString symbolName = index.data().toString();
     // delete from style and update list
@@ -754,16 +760,16 @@ void QgsStyleV2ManagerDialog::exportItemsSVG()
 }
 
 
-void QgsStyleV2ManagerDialog::exportSelectedItemsImages( QString dir, QString format, QSize size )
+void QgsStyleV2ManagerDialog::exportSelectedItemsImages( const QString& dir, const QString& format, const QSize& size )
 {
   if ( dir.isEmpty() )
     return;
 
   QModelIndexList indexes =  listItems->selectionModel()->selection().indexes();
-  foreach ( QModelIndex index, indexes )
+  Q_FOREACH ( const QModelIndex& index, indexes )
   {
     QString name = index.data().toString();
-    QString path = dir + "/" + name + "." + format;
+    QString path = dir + '/' + name + '.' + format;
     QgsSymbolV2 *sym = mStyle->symbol( name );
     sym->exportImage( path, format, size );
   }
@@ -1148,18 +1154,18 @@ void QgsStyleV2ManagerDialog::regrouped( QStandardItem *item )
   }
 }
 
-void QgsStyleV2ManagerDialog::setSymbolsChecked( QStringList symbols )
+void QgsStyleV2ManagerDialog::setSymbolsChecked( const QStringList& symbols )
 {
   QStandardItemModel *model = qobject_cast<QStandardItemModel*>( listItems->model() );
-  foreach ( const QString symbol, symbols )
+  Q_FOREACH ( const QString& symbol, symbols )
   {
     QList<QStandardItem*> items = model->findItems( symbol );
-    foreach ( QStandardItem* item, items )
+    Q_FOREACH ( QStandardItem* item, items )
       item->setCheckState( Qt::Checked );
   }
 }
 
-void QgsStyleV2ManagerDialog::filterSymbols( QString qword )
+void QgsStyleV2ManagerDialog::filterSymbols( const QString& qword )
 {
   QStringList items;
   if ( currentItemType() == 3 )
@@ -1181,7 +1187,7 @@ void QgsStyleV2ManagerDialog::tagsChanged()
   QStringList removetags;
 
   QStringList oldtags = mTagList;
-  QStringList newtags = tagsLineEdit->text().split( ",", QString::SkipEmptyParts );
+  QStringList newtags = tagsLineEdit->text().split( ',', QString::SkipEmptyParts );
 
   QgsStyleV2::StyleEntity type;
   if ( currentItemType() < 3 )
@@ -1198,27 +1204,27 @@ void QgsStyleV2ManagerDialog::tagsChanged()
     return;
   }
   // compare old with new to find removed tags
-  foreach ( const QString &tag, oldtags )
+  Q_FOREACH ( const QString &tag, oldtags )
   {
     if ( !newtags.contains( tag ) )
       removetags.append( tag );
   }
   if ( removetags.size() > 0 )
   {
-    foreach ( QModelIndex index, indexes )
+    Q_FOREACH ( const QModelIndex& index, indexes )
     {
       mStyle->detagSymbol( type, index.data().toString(), removetags );
     }
   }
   // compare new with old to find added tags
-  foreach ( const QString &tag, newtags )
+  Q_FOREACH ( const QString &tag, newtags )
   {
     if ( !oldtags.contains( tag ) )
       addtags.append( tag );
   }
   if ( addtags.size() > 0 )
   {
-    foreach ( QModelIndex index, indexes )
+    Q_FOREACH ( const QModelIndex& index, indexes )
     {
       mStyle->tagSymbol( type, index.data().toString(), addtags );
     }
@@ -1339,7 +1345,7 @@ void QgsStyleV2ManagerDialog::listitemsContextMenu( const QPoint& point )
   groupList->setTitle( tr( "Apply Group" ) );
 
   QStringList groups = mStyle->groupNames();
-  foreach ( QString group, groups )
+  Q_FOREACH ( const QString& group, groups )
   {
     groupList->addAction( group );
   }
@@ -1362,7 +1368,7 @@ void QgsStyleV2ManagerDialog::listitemsContextMenu( const QPoint& point )
       groupId = mStyle->groupId( selectedItem->text() );
     }
     QModelIndexList indexes =  listItems->selectionModel()->selectedIndexes();
-    foreach ( QModelIndex index, indexes )
+    Q_FOREACH ( const QModelIndex& index, indexes )
     {
       mStyle->group( type, index.data().toString(), groupId );
     }

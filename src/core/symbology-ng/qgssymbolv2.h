@@ -49,27 +49,36 @@ class CORE_EXPORT QgsSymbolV2
 {
   public:
 
+    /**
+     * The unit of the output
+     */
     enum OutputUnit
     {
-      MM = 0,
-      MapUnit,
-      Mixed, //mixed units in symbol layers
-      Pixel
+      MM = 0,  //!< The output shall be in millimeters
+      MapUnit, //!< The output shall be in map unitx
+      Mixed,   //!< Mixed units in symbol layers
+      Pixel    //!< The output shall be in pixels
     };
 
     typedef QList<OutputUnit> OutputUnitList;
 
+    /**
+     * Type of the symbol
+     */
     enum SymbolType
     {
-      Marker,
-      Line,
-      Fill
+      Marker, //!< Marker symbol
+      Line,   //!< Line symbol
+      Fill    //!< Fill symbol
     };
 
+    /**
+     * Scale method
+     */
     enum ScaleMethod
     {
-      ScaleArea,
-      ScaleDiameter
+      ScaleArea,     //!< Calculate scale by the area
+      ScaleDiameter  //!< Calculate scale by the diameter
     };
 
     enum RenderHint
@@ -155,12 +164,16 @@ class CORE_EXPORT QgsSymbolV2
     void drawPreviewIcon( QPainter* painter, QSize size, QgsRenderContext* customContext = 0 );
 
     //! export symbol as image format. PNG and SVG supported
-    void exportImage( QString path, QString format, QSize size );
+    void exportImage( const QString& path, const QString& format, const QSize& size );
 
     //! Generate symbol as image
     QImage asImage( QSize size, QgsRenderContext* customContext = 0 );
 
-    QImage bigSymbolPreviewImage();
+    /** Returns a large (roughly 100x100 pixel) preview image for the symbol.
+     * @param expressionContext optional expression context, for evaluation of
+     * data defined symbol properties
+     */
+    QImage bigSymbolPreviewImage( QgsExpressionContext* expressionContext = 0 );
 
     QString dump() const;
 
@@ -200,16 +213,21 @@ class CORE_EXPORT QgsSymbolV2
      * @note added in QGIS 2.9
      * @see setClipFeaturesToExtent
      */
-    double clipFeaturesToExtent() const { return mClipFeaturesToExtent; }
+    bool clipFeaturesToExtent() const { return mClipFeaturesToExtent; }
 
     QSet<QString> usedAttributes() const;
+
+    /** Returns whether the symbol utilises any data defined properties.
+     * @note added in QGIS 2.12
+     */
+    bool hasDataDefinedProperties() const;
 
     //! @note the layer will be NULL after stopRender
     void setLayer( const QgsVectorLayer* layer ) { mLayer = layer; }
     const QgsVectorLayer* layer() const { return mLayer; }
 
   protected:
-    QgsSymbolV2( SymbolType type, QgsSymbolLayerV2List layers ); // can't be instantiated
+    QgsSymbolV2( SymbolType type, const QgsSymbolLayerV2List& layers ); // can't be instantiated
 
     QgsSymbolLayerV2List cloneLayers() const;
 
@@ -240,6 +258,13 @@ class CORE_EXPORT QgsSymbolV2RenderContext
 
     QgsRenderContext& renderContext() { return mRenderContext; }
     const QgsRenderContext& renderContext() const { return mRenderContext; }
+
+    /** Sets the original value variable value for data defined symbology
+     * @param value value for original value variable. This usually represents the symbol property value
+     * before any data defined overrides have been applied.
+     * @note added in QGIS 2.12
+     */
+    void setOriginalValueVariable( const QVariant& value );
 
     QgsSymbolV2::OutputUnit outputUnit() const { return mOutputUnit; }
     void setOutputUnit( QgsSymbolV2::OutputUnit u ) { mOutputUnit = u; }
@@ -299,7 +324,7 @@ class CORE_EXPORT QgsMarkerSymbolV2 : public QgsSymbolV2
     */
     static QgsMarkerSymbolV2* createSimple( const QgsStringMap& properties );
 
-    QgsMarkerSymbolV2( QgsSymbolLayerV2List layers = QgsSymbolLayerV2List() );
+    QgsMarkerSymbolV2( const QgsSymbolLayerV2List& layers = QgsSymbolLayerV2List() );
 
     void setAngle( double angle );
     double angle() const;
@@ -350,7 +375,13 @@ class CORE_EXPORT QgsMarkerSymbolV2 : public QgsSymbolV2
 
     void renderPoint( const QPointF& point, const QgsFeature* f, QgsRenderContext& context, int layer = -1, bool selected = false );
 
-    virtual QgsSymbolV2* clone() const override;
+    /** Returns the approximate bounding box of the marker symbol, which includes the bounding box
+     * of all symbol layers for the symbol.
+     * @returns approximate symbol bounds, in painter units
+     * @note added in QGIS 2.14     */
+    QRectF bounds( const QPointF& point, QgsRenderContext& context ) const;
+
+    virtual QgsMarkerSymbolV2* clone() const override;
 
   private:
 
@@ -368,7 +399,7 @@ class CORE_EXPORT QgsLineSymbolV2 : public QgsSymbolV2
     */
     static QgsLineSymbolV2* createSimple( const QgsStringMap& properties );
 
-    QgsLineSymbolV2( QgsSymbolLayerV2List layers = QgsSymbolLayerV2List() );
+    QgsLineSymbolV2( const QgsSymbolLayerV2List& layers = QgsSymbolLayerV2List() );
 
     void setWidth( double width );
     double width() const;
@@ -390,7 +421,7 @@ class CORE_EXPORT QgsLineSymbolV2 : public QgsSymbolV2
 
     void renderPolyline( const QPolygonF& points, const QgsFeature* f, QgsRenderContext& context, int layer = -1, bool selected = false );
 
-    virtual QgsSymbolV2* clone() const override;
+    virtual QgsLineSymbolV2* clone() const override;
 
   private:
 
@@ -408,11 +439,11 @@ class CORE_EXPORT QgsFillSymbolV2 : public QgsSymbolV2
     */
     static QgsFillSymbolV2* createSimple( const QgsStringMap& properties );
 
-    QgsFillSymbolV2( QgsSymbolLayerV2List layers = QgsSymbolLayerV2List() );
+    QgsFillSymbolV2( const QgsSymbolLayerV2List& layers = QgsSymbolLayerV2List() );
     void setAngle( double angle );
     void renderPolygon( const QPolygonF& points, QList<QPolygonF>* rings, const QgsFeature* f, QgsRenderContext& context, int layer = -1, bool selected = false );
 
-    virtual QgsSymbolV2* clone() const override;
+    virtual QgsFillSymbolV2* clone() const override;
 
   private:
 

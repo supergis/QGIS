@@ -183,7 +183,7 @@ void QgsComposerAttributeTableV2::setVectorLayer( QgsVectorLayer* layer )
   emit changed();
 }
 
-void QgsComposerAttributeTableV2::setRelationId( const QString relationId )
+void QgsComposerAttributeTableV2::setRelationId( const QString& relationId )
 {
   if ( relationId == mRelationId )
   {
@@ -549,13 +549,13 @@ bool QgsComposerAttributeTableV2::getTableContents( QgsComposerTableContents &co
       int idx = layer->fieldNameIndex(( *columnIt )->attribute() );
       if ( idx != -1 )
       {
-        currentRow << replaceWrapChar( f.attributes()[idx] );
+        currentRow << replaceWrapChar( f.attributes().at( idx ) );
       }
       else
       {
         // Lets assume it's an expression
         QgsExpression* expression = new QgsExpression(( *columnIt )->attribute() );
-        context->lastScope()->setVariable( QString( "_rownum_" ), counter + 1 );
+        context->lastScope()->setVariable( QString( "row_number" ), counter + 1 );
         expression->prepare( context.data() );
         QVariant value = expression->evaluate( context.data() );
         currentRow << value;
@@ -623,7 +623,7 @@ QgsVectorLayer *QgsComposerAttributeTableV2::sourceLayer()
   return 0;
 }
 
-void QgsComposerAttributeTableV2::removeLayer( QString layerId )
+void QgsComposerAttributeTableV2::removeLayer( const QString& layerId )
 {
   if ( mVectorLayer && mSource == QgsComposerAttributeTableV2::LayerAttributes )
   {

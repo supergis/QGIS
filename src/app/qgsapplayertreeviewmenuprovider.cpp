@@ -6,6 +6,7 @@
 #include "qgsclipboard.h"
 #include "qgslayertree.h"
 #include "qgslayertreemodel.h"
+#include "qgslayertreemodellegendnode.h"
 #include "qgslayertreeviewdefaultactions.h"
 #include "qgsmaplayerstyleguiutils.h"
 #include "qgsproject.h"
@@ -53,6 +54,8 @@ QMenu* QgsAppLayerTreeViewMenuProvider::createContextMenu()
 
       menu->addAction( actions->actionRenameGroupOrLayer( menu ) );
 
+      menu->addAction( actions->actionMutuallyExclusiveGroup( menu ) );
+
       if ( mView->selectedNodes( true ).count() >= 2 )
         menu->addAction( actions->actionGroupSelected( menu ) );
 
@@ -71,7 +74,7 @@ QMenu* QgsAppLayerTreeViewMenuProvider::createContextMenu()
 
       if ( rlayer )
       {
-        menu->addAction( tr( "&Zoom to Best Scale (100%)" ), QgisApp::instance(), SLOT( legendLayerZoomNative() ) );
+        menu->addAction( QgsApplication::getThemeIcon( "/mActionZoomActual.svg" ), tr( "&Zoom to Native Resolution (100%)" ), QgisApp::instance(), SLOT( legendLayerZoomNative() ) );
 
         if ( rlayer->rasterType() != QgsRasterLayer::Palette )
           menu->addAction( tr( "&Stretch Using Current Extent" ), QgisApp::instance(), SLOT( legendLayerStretchUsingCurrentExtent() ) );
@@ -97,7 +100,7 @@ QMenu* QgsAppLayerTreeViewMenuProvider::createContextMenu()
       // style-related actions
       if ( layer && mView->selectedLayerNodes().count() == 1 )
       {
-        QMenu *menuStyleManager = new QMenu( tr( "Styles" ) );
+        QMenu *menuStyleManager = new QMenu( tr( "Styles" ), menu );
 
         QgisApp *app = QgisApp::instance();
         menuStyleManager->addAction( tr( "Copy Style" ), app, SLOT( copyStyle() ) );
@@ -186,9 +189,19 @@ QMenu* QgsAppLayerTreeViewMenuProvider::createContextMenu()
     }
 
   }
-  else
+  else if ( QgsLayerTreeModelLegendNode* node = mView->layerTreeModel()->index2legendNode( idx ) )
   {
-    // symbology item?
+    if ( QgsSymbolV2LegendNode* symbolNode = dynamic_cast< QgsSymbolV2LegendNode* >( node ) )
+    {
+      // symbology item
+      if ( symbolNode->flags() & Qt::ItemIsUserCheckable )
+      {
+        menu->addAction( QgsApplication::getThemeIcon( "/mActionShowAllLayers.png" ), tr( "&Show All Items" ),
+                         symbolNode, SLOT( checkAllItems() ) );
+        menu->addAction( QgsApplication::getThemeIcon( "/mActionHideAllLayers.png" ), tr( "&Hide All Items" ),
+                         symbolNode, SLOT( uncheckAllItems() ) );
+      }
+    }
   }
 
   return menu;
@@ -196,7 +209,7 @@ QMenu* QgsAppLayerTreeViewMenuProvider::createContextMenu()
 
 
 
-void QgsAppLayerTreeViewMenuProvider::addLegendLayerAction( QAction* action, QString menu, QString id,
+void QgsAppLayerTreeViewMenuProvider::addLegendLayerAction( QAction* action, const QString& menu, const QString& id,
     QgsMapLayer::LayerType type, bool allLayers )
 {
   mLegendLayerActionMap[type].append( LegendLayerAction( action, menu, id, allLayers ) );
@@ -261,9 +274,10 @@ QList< LegendLayerAction > QgsAppLayerTreeViewMenuProvider::legendLayerActions( 
   {
     QgsDebugMsg( QString( "legendLayerActions for layers of type %1:" ).arg( type ) );
 
-    foreach ( LegendLayerAction lyrAction, mLegendLayerActionMap[ type ] )
+    Q_FOREACH ( const LegendLayerAction& lyrAction, mLegendLayerActionMap[ type ] )
     {
-      QgsDebugMsg( QString( "%1/%2 - %3 layers" ).arg( lyrAction.menu ).arg( lyrAction.action->text() ).arg( lyrAction.layers.count() ) );
+      Q_UNUSED( lyrAction );
+      QgsDebugMsg( QString( "%1/%2 - %3 layers" ).arg( lyrAction.menu, lyrAction.action->text() ).arg( lyrAction.layers.count() ) );
     }
   }
 #endif
@@ -304,7 +318,7 @@ void QgsAppLayerTreeViewMenuProvider::addCustomLayerActions( QMenu* menu, QgsMap
           QMenu* newMenu = 0;
           QString dst = menuName;
           dst.remove( QChar( '&' ) );
-          foreach ( QMenu* menu, theMenus )
+          Q_FOREACH ( QMenu* menu, theMenus )
           {
             QString src = menu->title();
             src.remove( QChar( '&' ) );

@@ -81,12 +81,18 @@ class QgsExpression
     //! Return the number used for $rownum special column
     int currentRowNumber() /Deprecated/;
 
-    //! Assign a special column
-    static void setSpecialColumn( const QString& name, QVariant value );
-    //! Unset a special column
-    static void unsetSpecialColumn( const QString& name );
-    //! Return the value of the given special column or a null QVariant if undefined
-    static QVariant specialColumn( const QString& name );
+    /** Assign a special column
+     * @deprecated use global or project QgsExpressionContext variables instead
+     */
+    static void setSpecialColumn( const QString& name, const QVariant& value ) /Deprecated/;
+    /** Unset a special column
+     * @deprecated use global or project QgsExpressionContext variables instead
+     */
+    static void unsetSpecialColumn( const QString& name ) /Deprecated/;
+    /** Return the value of the given special column or a null QVariant if undefined
+     * @deprecated use global or project QgsExpressionContext variables instead
+     */
+    static QVariant specialColumn( const QString& name ) /Deprecated/;
     //! Check whether a special column exists
     //! @note added in 2.2
     static bool hasSpecialColumn( const QString& name );
@@ -242,10 +248,10 @@ class QgsExpression
       public:
         Function( const QString& fnname,
                   int params,
-                  QString group,
-                  QString helpText = QString(),
+                  const QString& group,
+                  const QString& helpText = QString(),
                   bool usesGeometry = false,
-                  QStringList referencedColumns = QStringList(),
+                  const QStringList& referencedColumns = QStringList(),
                   bool lazyEval = false,
                   bool handlesNull = false,
                   bool isContextual = false );
@@ -290,8 +296,9 @@ class QgsExpression
          * @param context context expression is being evaluated against
          * @param parent parent expression
          * @returns result of function
+         * @note named funcV2 in Python bindings. Will be renamed to func to replace deprecated method in QGIS 3.0.
          */
-     	virtual QVariant func( const QVariantList& values, const QgsExpressionContext* context, QgsExpression* parent );
+     	virtual QVariant func( const QVariantList& values, const QgsExpressionContext* context, QgsExpression* parent ) /PyName=funcV2/;
 
         virtual bool handlesNull() const;
     };
@@ -310,7 +317,7 @@ class QgsExpression
      * @param name function name
      * @see registerFunction
      */
-    static bool unregisterFunction( QString name );
+    static bool unregisterFunction( const QString& name );
 
     /** Deletes all registered functions whose ownership have been transferred to the expression engine.
      * @note added in QGIS 2.12
@@ -333,10 +340,36 @@ class QgsExpression
      */
     static QList<QgsExpression::Function *> specialColumns();
 
-    //! return quoted column reference (in double quotes)
+    /** Returns a quoted column reference (in double quotes)
+     * @see quotedString()
+     * @see quotedValue()
+     */
     static QString quotedColumnRef( QString name );
-    //! return quoted string (in single quotes)
+
+    /** Returns a quoted version of a string (in single quotes)
+     * @see quotedValue()
+     * @see quotedColumnRef()
+     */
     static QString quotedString( QString text );
+
+    /** Returns a string representation of a literal value, including appropriate
+     * quotations where required.
+     * @param value value to convert to a string representation
+     * @note added in QGIS 2.14
+     * @see quotedString()
+     * @see quotedColumnRef()
+     */
+    static QString quotedValue( const QVariant& value );
+
+    /** Returns a string representation of a literal value, including appropriate
+     * quotations where required.
+     * @param value value to convert to a string representation
+     * @param type value type
+     * @note added in QGIS 2.14
+     * @see quotedString()
+     * @see quotedColumnRef()
+     */
+    static QString quotedValue( const QVariant& value, QVariant::Type type );
 
     //////
 
@@ -356,14 +389,14 @@ class QgsExpression
       %ConvertToSubClassCode
         switch (sipCpp->nodeType())
         {
-          case QgsExpression::ntUnaryOperator:   sipClass = sipClass_QgsExpression_NodeUnaryOperator; break;
-          case QgsExpression::ntBinaryOperator:  sipClass = sipClass_QgsExpression_NodeBinaryOperator; break;
-          case QgsExpression::ntInOperator:      sipClass = sipClass_QgsExpression_NodeInOperator; break;
-          case QgsExpression::ntFunction:        sipClass = sipClass_QgsExpression_NodeFunction; break;
-          case QgsExpression::ntLiteral:         sipClass = sipClass_QgsExpression_NodeLiteral; break;
-          case QgsExpression::ntColumnRef:       sipClass = sipClass_QgsExpression_NodeColumnRef; break;
-          case QgsExpression::ntCondition:       sipClass = sipClass_QgsExpression_NodeCondition; break;
-          default:                               sipClass = 0; break;
+          case QgsExpression::ntUnaryOperator:   sipType = sipType_QgsExpression_NodeUnaryOperator; break;
+          case QgsExpression::ntBinaryOperator:  sipType = sipType_QgsExpression_NodeBinaryOperator; break;
+          case QgsExpression::ntInOperator:      sipType = sipType_QgsExpression_NodeInOperator; break;
+          case QgsExpression::ntFunction:        sipType = sipType_QgsExpression_NodeFunction; break;
+          case QgsExpression::ntLiteral:         sipType = sipType_QgsExpression_NodeLiteral; break;
+          case QgsExpression::ntColumnRef:       sipType = sipType_QgsExpression_NodeColumnRef; break;
+          case QgsExpression::ntCondition:       sipType = sipType_QgsExpression_NodeCondition; break;
+          default:                               sipType = 0; break;
         }
       %End
 
@@ -429,7 +462,7 @@ class QgsExpression
         void setValid( bool valid );
         bool operator==( const QgsExpression::Interval& other ) const;
         static QgsExpression::Interval invalidInterVal();
-        static QgsExpression::Interval fromString( QString string );
+        static QgsExpression::Interval fromString( const QString& string );
     };
 
     class NodeUnaryOperator : QgsExpression::Node
@@ -612,7 +645,7 @@ class QgsExpression
     /** Returns the translated name for a function group.
      * @param group untranslated group name
      */
-    static QString group( QString group );
+    static QString group( const QString& group );
 
   protected:
     void initGeomCalculator();

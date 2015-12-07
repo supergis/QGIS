@@ -69,14 +69,14 @@ QgsNamedColorList QgsRecentColorScheme::fetchColors( const QString &context, con
 
   //generate list from recent colors
   QgsNamedColorList colorList;
-  foreach ( QVariant color, recentColorVariants )
+  Q_FOREACH ( const QVariant& color, recentColorVariants )
   {
     colorList.append( qMakePair( color.value<QColor>(), QgsSymbolLayerV2Utils::colorToName( color.value<QColor>() ) ) );
   }
   return colorList;
 }
 
-QgsColorScheme *QgsRecentColorScheme::clone() const
+QgsRecentColorScheme* QgsRecentColorScheme::clone() const
 {
   return new QgsRecentColorScheme();
 }
@@ -164,7 +164,7 @@ bool QgsCustomColorScheme::setColors( const QgsNamedColorList &colors, const QSt
   return true;
 }
 
-QgsColorScheme *QgsCustomColorScheme::clone() const
+QgsCustomColorScheme* QgsCustomColorScheme::clone() const
 {
   return new QgsCustomColorScheme();
 }
@@ -231,7 +231,7 @@ bool QgsProjectColorScheme::setColors( const QgsNamedColorList &colors, const QS
   return true;
 }
 
-QgsColorScheme *QgsProjectColorScheme::clone() const
+QgsProjectColorScheme* QgsProjectColorScheme::clone() const
 {
   return new QgsProjectColorScheme();
 }
@@ -332,7 +332,7 @@ QString QgsUserColorScheme::schemeName() const
   return mName;
 }
 
-QgsColorScheme *QgsUserColorScheme::clone() const
+QgsUserColorScheme* QgsUserColorScheme::clone() const
 {
   return new QgsUserColorScheme( mFilename );
 }

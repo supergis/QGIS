@@ -30,7 +30,7 @@ QgsWMSConnectionItem::QgsWMSConnectionItem( QgsDataItem* parent, QString name, Q
     , mCapabilitiesDownload( 0 )
 {
   mIconName = "mIconConnect.png";
-  mCapabilitiesDownload = new QgsWmsCapabilitiesDownload();
+  mCapabilitiesDownload = new QgsWmsCapabilitiesDownload( false );
 }
 
 QgsWMSConnectionItem::~QgsWMSConnectionItem()
@@ -92,13 +92,13 @@ QVector<QgsDataItem*> QgsWMSConnectionItem::createChildren()
     // <element name="Capability">
     //    <element ref="wms:Layer" minOccurs="0"/>  - default maxOccurs=1
     const QgsWmsLayerProperty &topLayerProperty = capabilityProperty.layer;
-    foreach ( const QgsWmsLayerProperty &layerProperty, topLayerProperty.layer )
+    Q_FOREACH ( const QgsWmsLayerProperty &layerProperty, topLayerProperty.layer )
     {
       // Attention, the name may be empty
-      QgsDebugMsg( QString::number( layerProperty.orderId ) + " " + layerProperty.name + " " + layerProperty.title );
+      QgsDebugMsg( QString::number( layerProperty.orderId ) + ' ' + layerProperty.name + ' ' + layerProperty.title );
       QString pathName = layerProperty.name.isEmpty() ? QString::number( layerProperty.orderId ) : layerProperty.name;
 
-      QgsWMSLayerItem *layer = new QgsWMSLayerItem( this, layerProperty.title, mPath + "/" + pathName, capabilitiesProperty, uri, layerProperty );
+      QgsWMSLayerItem *layer = new QgsWMSLayerItem( this, layerProperty.title, mPath + '/' + pathName, capabilitiesProperty, uri, layerProperty );
 
       children << layer;
     }
@@ -109,49 +109,49 @@ QVector<QgsDataItem*> QgsWMSConnectionItem::createChildren()
   {
     QHash<QString, QgsWmtsTileMatrixSet> tileMatrixSets = caps.supportedTileMatrixSets();
 
-    foreach ( const QgsWmtsTileLayer &l, tileLayers )
+    Q_FOREACH ( const QgsWmtsTileLayer &l, tileLayers )
     {
       QString title = l.title.isEmpty() ? l.identifier : l.title;
-      QgsDataItem *layerItem = l.styles.size() == 1 ? this : new QgsDataCollectionItem( this, title, mPath + "/" + l.identifier );
+      QgsDataItem *layerItem = l.styles.size() == 1 ? this : new QgsDataCollectionItem( this, title, mPath + '/' + l.identifier );
       if ( layerItem != this )
       {
         layerItem->setToolTip( title );
         addChildItem( layerItem );
       }
 
-      foreach ( const QgsWmtsStyle &style, l.styles )
+      Q_FOREACH ( const QgsWmtsStyle &style, l.styles )
       {
         QString styleName = style.title.isEmpty() ? style.identifier : style.title;
         if ( layerItem == this )
           styleName.prepend( title + " - " );
 
-        QgsDataItem *styleItem = l.setLinks.size() == 1 ? layerItem : new QgsDataCollectionItem( layerItem, styleName, layerItem->path() + "/" + style.identifier );
+        QgsDataItem *styleItem = l.setLinks.size() == 1 ? layerItem : new QgsDataCollectionItem( layerItem, styleName, layerItem->path() + '/' + style.identifier );
         if ( styleItem != layerItem )
         {
           styleItem->setToolTip( styleName );
           layerItem->addChildItem( styleItem );
         }
 
-        foreach ( const QgsWmtsTileMatrixSetLink &setLink, l.setLinks )
+        Q_FOREACH ( const QgsWmtsTileMatrixSetLink &setLink, l.setLinks )
         {
           QString linkName = setLink.tileMatrixSet;
           if ( styleItem == layerItem )
             linkName.prepend( styleName + " - " );
 
-          QgsDataItem *linkItem = l.formats.size() == 1 ? styleItem : new QgsDataCollectionItem( styleItem, linkName, styleItem->path() + "/" + setLink.tileMatrixSet );
+          QgsDataItem *linkItem = l.formats.size() == 1 ? styleItem : new QgsDataCollectionItem( styleItem, linkName, styleItem->path() + '/' + setLink.tileMatrixSet );
           if ( linkItem != styleItem )
           {
             linkItem->setToolTip( linkName );
             styleItem->addChildItem( linkItem );
           }
 
-          foreach ( QString format, l.formats )
+          Q_FOREACH ( const QString& format, l.formats )
           {
             QString name = format;
             if ( linkItem == styleItem )
               name.prepend( linkName + " - " );
 
-            QgsDataItem *layerItem = new QgsWMTSLayerItem( linkItem, name, linkItem->path() + "/" + name, uri,
+            QgsDataItem *layerItem = new QgsWMTSLayerItem( linkItem, name, linkItem->path() + '/' + name, uri,
                 l.identifier, format, style.identifier, setLink.tileMatrixSet, tileMatrixSets[ setLink.tileMatrixSet ].crs, title );
             layerItem->setToolTip( name );
             linkItem->addChildItem( layerItem );
@@ -228,12 +228,12 @@ QgsWMSLayerItem::QgsWMSLayerItem( QgsDataItem* parent, QString name, QString pat
   mUri = createUri();
 
   // Populate everything, it costs nothing, all info about layers is collected
-  foreach ( const QgsWmsLayerProperty &layerProperty, mLayerProperty.layer )
+  Q_FOREACH ( const QgsWmsLayerProperty &layerProperty, mLayerProperty.layer )
   {
     // Attention, the name may be empty
-    QgsDebugMsg( QString::number( layerProperty.orderId ) + " " + layerProperty.name + " " + layerProperty.title );
+    QgsDebugMsg( QString::number( layerProperty.orderId ) + ' ' + layerProperty.name + ' ' + layerProperty.title );
     QString pathName = layerProperty.name.isEmpty() ? QString::number( layerProperty.orderId ) : layerProperty.name;
-    QgsWMSLayerItem * layer = new QgsWMSLayerItem( this, layerProperty.title, mPath + "/" + pathName, mCapabilitiesProperty, dataSourceUri, layerProperty );
+    QgsWMSLayerItem * layer = new QgsWMSLayerItem( this, layerProperty.title, mPath + '/' + pathName, mCapabilitiesProperty, dataSourceUri, layerProperty );
     //mChildren.append( layer );
     addChildItem( layer );
   }
@@ -260,7 +260,7 @@ QString QgsWMSLayerItem::createUri()
   QString format;
   // get first supported by qt and server
   QVector<QgsWmsSupportedFormat> formats( QgsWmsProvider::supportedFormats() );
-  foreach ( const QgsWmsSupportedFormat &f, formats )
+  Q_FOREACH ( const QgsWmsSupportedFormat &f, formats )
   {
     if ( mCapabilitiesProperty.capability.request.getMap.format.indexOf( f.format ) >= 0 )
     {
@@ -273,7 +273,7 @@ QString QgsWMSLayerItem::createUri()
   QString crs;
   // get first known if possible
   QgsCoordinateReferenceSystem testCrs;
-  foreach ( QString c, mLayerProperty.crs )
+  Q_FOREACH ( const QString& c, mLayerProperty.crs )
   {
     testCrs.createFromOgcWmsCrs( c );
     if ( testCrs.isValid() )
@@ -351,10 +351,10 @@ QVector<QgsDataItem*> QgsWMSRootItem::createChildren()
 {
   QVector<QgsDataItem*> connections;
 
-  foreach ( QString connName, QgsWMSConnection::connectionList() )
+  Q_FOREACH ( const QString& connName, QgsWMSConnection::connectionList() )
   {
     QgsWMSConnection connection( connName );
-    QgsDataItem * conn = new QgsWMSConnectionItem( this, connName, mPath + "/" + connName, connection.uri().encodedUri() );
+    QgsDataItem * conn = new QgsWMSConnectionItem( this, connName, mPath + '/' + connName, connection.uri().encodedUri() );
 
     connections.append( conn );
   }

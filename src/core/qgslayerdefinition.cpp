@@ -15,7 +15,7 @@ bool QgsLayerDefinition::loadLayerDefinition( const QString &path, QgsLayerTreeG
   QFile file( path );
   if ( !file.open( QIODevice::ReadOnly ) )
   {
-    errorMessage = QString( "Can not open file" );
+    errorMessage = QLatin1String( "Can not open file" );
     return false;
   }
 
@@ -76,7 +76,7 @@ bool QgsLayerDefinition::loadLayerDefinition( QDomDocument doc, QgsLayerTreeGrou
   QgsMapLayerRegistry::instance()->addMapLayers( layers, loadInLegend );
 
   QList<QgsLayerTreeNode*> nodes = root->children();
-  foreach ( QgsLayerTreeNode *node, nodes )
+  Q_FOREACH ( QgsLayerTreeNode *node, nodes )
     root->takeChild( node );
   delete root;
 
@@ -86,7 +86,7 @@ bool QgsLayerDefinition::loadLayerDefinition( QDomDocument doc, QgsLayerTreeGrou
 
 }
 
-bool QgsLayerDefinition::exportLayerDefinition( QString path, QList<QgsLayerTreeNode*> selectedTreeNodes, QString &errorMessage )
+bool QgsLayerDefinition::exportLayerDefinition( QString path, const QList<QgsLayerTreeNode*>& selectedTreeNodes, QString &errorMessage )
 {
   if ( !path.endsWith( ".qlr" ) )
     path = path.append( ".qlr" );
@@ -99,7 +99,7 @@ bool QgsLayerDefinition::exportLayerDefinition( QString path, QList<QgsLayerTree
   doc.appendChild( qgiselm );
   QList<QgsLayerTreeNode*> nodes = selectedTreeNodes;
   QgsLayerTreeGroup* root = new QgsLayerTreeGroup;
-  foreach ( QgsLayerTreeNode* node, nodes )
+  Q_FOREACH ( QgsLayerTreeNode* node, nodes )
   {
     QgsLayerTreeNode* newnode = node->clone();
     root->addChildNode( newnode );
@@ -108,7 +108,7 @@ bool QgsLayerDefinition::exportLayerDefinition( QString path, QList<QgsLayerTree
 
   QDomElement layerselm = doc.createElement( "maplayers" );
   QList<QgsLayerTreeLayer*> layers = root->findLayers();
-  foreach ( QgsLayerTreeLayer* layer, layers )
+  Q_FOREACH ( QgsLayerTreeLayer* layer, layers )
   {
     QDomElement layerelm = doc.createElement( "maplayer" );
     layer->layer()->writeLayerXML( layerelm, doc, fileinfo.canonicalFilePath() );

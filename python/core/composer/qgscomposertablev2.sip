@@ -15,8 +15,47 @@ typedef QList< QList< QVariant > > QgsComposerTableContents;
 */
 typedef QList<QgsComposerTableColumn*> QgsComposerTableColumns;
 
+
+/** \ingroup MapComposer
+ *  \class QgsComposerTableStyle
+ *  \brief Styling option for a composer table cell
+ *  \note added in QGIS 2.12
+ */
+
+class QgsComposerTableStyle
+{
+%TypeHeaderCode
+#include <qgscomposertablev2.h>
+%End
+  public:
+
+    QgsComposerTableStyle();
+
+    //! Whether the styling option is enabled
+    bool enabled;
+
+    //! Cell background color
+    QColor cellBackgroundColor;
+
+    /** Writes the style's properties to XML for storage.
+     * @param styleElem an existing QDomElement in which to store the style's properties.
+     * @param doc QDomDocument for the destination XML.
+     * @see readXML
+     */
+    bool writeXML( QDomElement& styleElem, QDomDocument & doc ) const;
+
+    /** Reads the style's properties from XML.
+     * @param styleElem a QDomElement holding the style's desired properties.
+     * @see writeXML
+     */
+    bool readXML( const QDomElement& styleElem );
+
+};
+
+
 /** A class to display a table in the print composer, and allow
  * the table to span over multiple frames
+ * \ingroup MapComposer
  * @note added in QGIS 2.5
  */
 class QgsComposerTableV2: QgsComposerMultiFrame
@@ -63,6 +102,21 @@ class QgsComposerTableV2: QgsComposerMultiFrame
       WrapText /*!< text which doesn't fit inside the cell is wrapped. Note that this only applies to text in columns with a fixed width. */
     };
 
+    /** Row or column groups for cell styling
+     */
+    enum CellStyleGroup
+    {
+      OddColumns, /*!< Style odd numbered columns */
+      EvenColumns, /*!< Style even numbered columns */
+      OddRows, /*!< Style odd numbered rows */
+      EvenRows, /*!< Style even numbered rows */
+      FirstColumn, /*!< Style first column only */
+      LastColumn, /*!< Style last column only */
+      HeaderRow, /*!< Style header row */
+      FirstRow, /*!< Style first row only */
+      LastRow /*!< Style last row only */
+    };
+
     QgsComposerTableV2( QgsComposition* composition /TransferThis/, bool createUndoCommands );
     QgsComposerTableV2();
 
@@ -100,7 +154,7 @@ class QgsComposerTableV2: QgsComposerMultiFrame
      * @see emptyTableMessage
      * @see setEmptyTableBehaviour
      */
-    void setEmptyTableMessage( const QString message );
+    void setEmptyTableMessage( const QString& message );
 
     /** Returns the message for empty tables with no content rows. This message
      * is displayed in the table body if the empty table behaviour is
@@ -297,7 +351,22 @@ class QgsComposerTableV2: QgsComposerMultiFrame
      * @param columns list of QgsComposerTableColumns to show in table
      * @see columns
      */
-    void setColumns( QgsComposerTableColumns columns );
+    void setColumns( const QgsComposerTableColumns& columns );
+
+    /** Sets the cell style for a cell group.
+     * @param group group to set style for
+     * @param style new cell style
+     * @see cellStyle()
+     * @note added in QGIS 2.12
+     */
+    void setCellStyle( CellStyleGroup group, const QgsComposerTableStyle& style );
+
+    /** Returns the cell style for a cell group.
+     * @param group group to retreive style for
+     * @see setCellStyle()
+     * @note added in QGIS 2.12
+     */
+    const QgsComposerTableStyle* cellStyle( CellStyleGroup group ) const;
 
     /** Returns the text used in the column headers for the table.
      * @returns QMap of int to QString, where the int is the column index (starting at 0),

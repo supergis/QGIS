@@ -26,7 +26,7 @@
 QgsNewNameDialog::QgsNewNameDialog( const QString& source, const QString& initial,
                                     const QStringList& extensions, const QStringList& existing,
                                     const QRegExp& regexp, Qt::CaseSensitivity cs,
-                                    QWidget *parent, Qt::WindowFlags flags )
+                                    QWidget *parent, const Qt::WindowFlags& flags )
     : QgsDialog( parent, flags, QDialogButtonBox::Ok | QDialogButtonBox::Cancel )
     , mExiting( existing )
     , mExtensions( extensions )
@@ -48,7 +48,7 @@ QgsNewNameDialog::QgsNewNameDialog( const QString& source, const QString& initia
   }
   else
   {
-    hintString = tr( "Enter new %1 for %2" ).arg( nameDesc ).arg( source );
+    hintString = tr( "Enter new %1 for %2" ).arg( nameDesc, source );
   }
   mHintLabel = new QLabel( hintString, this );
   layout()->addWidget( mHintLabel );
@@ -132,7 +132,7 @@ void QgsNewNameDialog::nameChanged()
   QStringList newNames = fullNames( newName, mExtensions );
   if ( !mExtensions.isEmpty() )
   {
-    namesString += " " + newNames.join( ", " );
+    namesString += ' ' + newNames.join( ", " );
     mNamesLabel->setText( namesString );
   }
 
@@ -163,7 +163,7 @@ QString QgsNewNameDialog::name() const
 QStringList QgsNewNameDialog::fullNames( const QString& name, const QStringList& extensions )
 {
   QStringList list;
-  foreach ( QString ext, extensions )
+  Q_FOREACH ( const QString& ext, extensions )
   {
     list << name + ext;
 
@@ -180,9 +180,9 @@ QStringList QgsNewNameDialog::matching( const QStringList& newNames, const QStri
 {
   QStringList list;
 
-  foreach ( QString newName, newNames )
+  Q_FOREACH ( const QString& newName, newNames )
   {
-    foreach ( QString existingName, existingNames )
+    Q_FOREACH ( const QString& existingName, existingNames )
     {
       if ( existingName.compare( newName, cs ) == 0 )
       {

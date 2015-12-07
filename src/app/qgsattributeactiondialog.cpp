@@ -166,7 +166,7 @@ void QgsAttributeActionDialog::browse()
 {
   // Popup a file browser and place the results into the action widget
   QString action = QFileDialog::getOpenFileName(
-                     this, tr( "Select an action", "File dialog window title" ) );
+                     this, tr( "Select an action", "File dialog window title" ), QDir::homePath() );
 
   if ( !action.isNull() )
     actionAction->insertPlainText( action );
@@ -426,7 +426,7 @@ QString QgsAttributeActionDialog::uniqueName( QString name )
     while ( !unique )
     {
       QString suffix = QString::number( suffix_num );
-      new_name = name + "_" + suffix;
+      new_name = name + '_' + suffix;
       unique = true;
       for ( int i = 0; i < pos; ++i )
         if ( attributeActionTable->item( i, 0 )->text() == new_name )

@@ -67,9 +67,9 @@ QgsBookmarks::QgsBookmarks( QWidget *parent ) : QDockWidget( parent )
   {
     QMessageBox::warning( this, tr( "Error" ),
                           tr( "Unable to open bookmarks database.\nDatabase: %1\nDriver: %2\nDatabase: %3" )
-                          .arg( QgsApplication::qgisUserDbFilePath() )
-                          .arg( db.lastError().driverText() )
-                          .arg( db.lastError().databaseText() )
+                          .arg( QgsApplication::qgisUserDbFilePath(),
+                                db.lastError().driverText(),
+                                db.lastError().databaseText() )
                         );
     deleteLater();
     return;
@@ -103,6 +103,8 @@ QgsBookmarks::QgsBookmarks( QWidget *parent ) : QDockWidget( parent )
 
 QgsBookmarks::~QgsBookmarks()
 {
+  delete lstBookmarks->model();
+  QSqlDatabase::removeDatabase( "bookmarks" );
   saveWindowLocation();
 }
 
@@ -163,15 +165,15 @@ void QgsBookmarks::addClicked()
   else
   {
     QMessageBox::warning( this, tr( "Error" ), tr( "Unable to create the bookmark.\nDriver:%1\nDatabase:%2" )
-                          .arg( query.lastError().driverText() )
-                          .arg( query.lastError().databaseText() ) );
+                          .arg( query.lastError().driverText(),
+                                query.lastError().databaseText() ) );
   }
 }
 
 void QgsBookmarks::deleteClicked()
 {
   QList<int> rows;
-  foreach ( const QModelIndex &idx, lstBookmarks->selectionModel()->selectedIndexes() )
+  Q_FOREACH ( const QModelIndex &idx, lstBookmarks->selectionModel()->selectedIndexes() )
   {
     if ( idx.column() == 1 )
     {
@@ -189,7 +191,7 @@ void QgsBookmarks::deleteClicked()
     return;
 
   int i = 0;
-  foreach ( int row, rows )
+  Q_FOREACH ( int row, rows )
   {
     lstBookmarks->model()->removeRow( row - i );
     i++;
@@ -239,7 +241,7 @@ void QgsBookmarks::importFromXML()
 {
   QSettings settings;
 
-  QString lastUsedDir = settings.value( "/Windows/Bookmarks/LastUsedDirectory", QVariant() ).toString();
+  QString lastUsedDir = settings.value( "/Windows/Bookmarks/LastUsedDirectory", QDir::homePath() ).toString();
   QString fileName = QFileDialog::getOpenFileName( this, tr( "Import Bookmarks" ), lastUsedDir,
                      tr( "XML files (*.xml *XML)" ) );
   if ( fileName.isEmpty() )
@@ -283,17 +285,17 @@ void QgsBookmarks::importFromXML()
                "  VALUES (NULL,"
                "'" + name.text() + "',"
                "'" + prjname.text() + "',"
-               + xmin.text() + ","
-               + ymin.text() + ","
-               + xmax.text() + ","
-               + ymax.text() + ","
+               + xmin.text() + ','
+               + ymin.text() + ','
+               + xmax.text() + ','
+               + ymax.text() + ','
                + srid.text() + ");";
   }
 
-  QStringList queriesList = queries.split( ";" );
+  QStringList queriesList = queries.split( ';' );
   QSqlQuery query( model->database() );
 
-  foreach ( QString queryTxt, queriesList )
+  Q_FOREACH ( const QString& queryTxt, queriesList )
   {
     if ( queryTxt.trimmed().isEmpty() )
     {
@@ -302,8 +304,8 @@ void QgsBookmarks::importFromXML()
     if ( !query.exec( queryTxt ) )
     {
       QMessageBox::warning( this, tr( "Error" ), tr( "Unable to create the bookmark.\nDriver: %1\nDatabase: %2" )
-                            .arg( query.lastError().driverText() )
-                            .arg( query.lastError().databaseText() ) );
+                            .arg( query.lastError().driverText(),
+                                  query.lastError().databaseText() ) );
     }
     query.finish();
   }
@@ -315,7 +317,7 @@ void QgsBookmarks::exportToXML()
 {
   QSettings settings;
 
-  QString lastUsedDir = settings.value( "/Windows/Bookmarks/LastUsedDirectory", QVariant() ).toString();
+  QString lastUsedDir = settings.value( "/Windows/Bookmarks/LastUsedDirectory", QDir::homePath() ).toString();
   QString fileName = QFileDialog::getSaveFileName( this, tr( "Export bookmarks" ), lastUsedDir,
                      tr( "XML files( *.xml *.XML )" ) );
   if ( fileName.isEmpty() )

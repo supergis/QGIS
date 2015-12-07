@@ -37,7 +37,7 @@ QgsGmlFeatureClass::QgsGmlFeatureClass()
 {
 }
 
-QgsGmlFeatureClass::QgsGmlFeatureClass( QString name, QString path )
+QgsGmlFeatureClass::QgsGmlFeatureClass( const QString& name, const QString& path )
     : mName( name )
     , mPath( path )
 {
@@ -106,7 +106,7 @@ bool QgsGmlSchema::parseXSD( const QByteArray &xml )
 
   //QgsDebugMsg( QString( "%1 elemets read" ).arg( elementElements.size() ) );
 
-  foreach ( QDomElement elementElement, elementElements )
+  Q_FOREACH ( const QDomElement& elementElement, elementElements )
   {
     QString name = elementElement.attribute( "name" );
     QString type = elementElement.attribute( "type" );
@@ -160,7 +160,7 @@ bool QgsGmlSchema::xsdFeatureClass( const QDomElement &element, const QString & 
 
   // Supported geometry types
   QStringList geometryPropertyTypes;
-  foreach ( QString geom, mGeometryTypes )
+  Q_FOREACH ( const QString& geom, mGeometryTypes )
   {
     geometryPropertyTypes << geom + "PropertyType";
   }
@@ -173,7 +173,7 @@ bool QgsGmlSchema::xsdFeatureClass( const QDomElement &element, const QString & 
 
   // Add attributes from current comple type
   QList<QDomElement> sequenceElements = domElements( extrest, "sequence.element" );
-  foreach ( QDomElement sequenceElement, sequenceElements )
+  Q_FOREACH ( const QDomElement& sequenceElement, sequenceElements )
   {
     QString fieldName = sequenceElement.attribute( "name" );
     QString fieldTypeName = stripNS( sequenceElement.attribute( "type" ) );
@@ -196,7 +196,7 @@ bool QgsGmlSchema::xsdFeatureClass( const QDomElement &element, const QString & 
       else
       {
         // TODO: get type from referenced element
-        QgsDebugMsg( QString( "field %1.%2 is referencing %3 - not supported" ).arg( typeName ).arg( fieldName ) );
+        QgsDebugMsg( QString( "field %1.%2 is referencing %3 - not supported" ).arg( typeName, fieldName ) );
       }
       continue;
     }
@@ -218,7 +218,7 @@ bool QgsGmlSchema::xsdFeatureClass( const QDomElement &element, const QString & 
     QVariant::Type fieldType = QVariant::String;
     if ( fieldTypeName.isEmpty() )
     {
-      QgsDebugMsg( QString( "Cannot get %1.%2 field type" ).arg( typeName ).arg( fieldName ) );
+      QgsDebugMsg( QString( "Cannot get %1.%2 field type" ).arg( typeName, fieldName ) );
     }
     else
     {
@@ -271,14 +271,14 @@ QString QgsGmlSchema::xsdComplexTypeGmlBaseType( const QDomElement &element, con
 
 QString QgsGmlSchema::stripNS( const QString & name )
 {
-  return name.contains( ":" ) ? name.section( ':', 1 ) : name;
+  return name.contains( ':' ) ? name.section( ':', 1 ) : name;
 }
 
 QList<QDomElement> QgsGmlSchema::domElements( const QDomElement &element, const QString & path )
 {
   QList<QDomElement> list;
 
-  QStringList names = path.split( "." );
+  QStringList names = path.split( '.' );
   if ( names.size() == 0 ) return list;
   QString name = names.value( 0 );
   names.removeFirst();
@@ -316,7 +316,7 @@ QDomElement QgsGmlSchema::domElement( const QDomElement &element, const QString 
 QList<QDomElement> QgsGmlSchema::domElements( QList<QDomElement> &elements, const QString & attr, const QString & attrVal )
 {
   QList<QDomElement> list;
-  foreach ( QDomElement el, elements )
+  Q_FOREACH ( const QDomElement& el, elements )
   {
     if ( el.attribute( attr ) == attrVal )
     {
@@ -361,7 +361,7 @@ void QgsGmlSchema::startElement( const XML_Char* el, const XML_Char** attr )
   mLevel++;
 
   QString elementName = QString::fromUtf8( el );
-  QgsDebugMsgLevel( QString( "-> %1 %2 %3" ).arg( mLevel ).arg( elementName ).arg( mLevel >= mSkipLevel ? "skip" : "" ), 5 );
+  QgsDebugMsgLevel( QString( "-> %1 %2 %3" ).arg( mLevel ).arg( elementName, mLevel >= mSkipLevel ? "skip" : "" ), 5 );
 
   if ( mLevel >= mSkipLevel )
   {

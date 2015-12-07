@@ -36,7 +36,7 @@ QgsCircularStringV2::~QgsCircularStringV2()
 
 }
 
-QgsAbstractGeometryV2 *QgsCircularStringV2::clone() const
+QgsCircularStringV2 *QgsCircularStringV2::clone() const
 {
   return new QgsCircularStringV2( *this );
 }
@@ -269,7 +269,7 @@ unsigned char* QgsCircularStringV2::asWkb( int& binarySize ) const
 
 QString QgsCircularStringV2::asWkt( int precision ) const
 {
-  QString wkt = wktTypeStr() + " ";
+  QString wkt = wktTypeStr() + ' ';
   QList<QgsPointV2> pts;
   points( pts );
   wkt += QgsGeometryUtils::pointsToWKT( pts, precision, is3D(), isMeasure() );
@@ -512,6 +512,12 @@ void QgsCircularStringV2::segmentize( const QgsPointV2& p1, const QgsPointV2& p2
   points.append( p1 );
   if ( p2 != p3 && p1 != p2 ) //draw straight line segment if two points have the same position
   {
+    QgsWKBTypes::Type pointWkbType = QgsWKBTypes::Point;
+    if ( hasZ )
+      pointWkbType = QgsWKBTypes::addZ( pointWkbType );
+    if ( hasM )
+      pointWkbType = QgsWKBTypes::addM( pointWkbType );
+
     for ( double angle = a1 + increment; clockwise ? angle > a3 : angle < a3; angle += increment )
     {
       x = centerX + radius * cos( angle );
@@ -532,7 +538,7 @@ void QgsCircularStringV2::segmentize( const QgsPointV2& p1, const QgsPointV2& p2
         m = interpolateArc( angle, a1, a2, a3, p1.m(), p2.m(), p3.m() );
       }
 
-      points.append( QgsPointV2( mWkbType, x, y, z, m ) );
+      points.append( QgsPointV2( pointWkbType, x, y, z, m ) );
     }
   }
   points.append( p3 );
@@ -804,14 +810,14 @@ double QgsCircularStringV2::closestSegment( const QgsPointV2& pt, QgsPointV2& se
   return minDist;
 }
 
-bool QgsCircularStringV2::pointAt( int i, QgsPointV2& vertex, QgsVertexId::VertexType& type ) const
+bool QgsCircularStringV2::pointAt( int node, QgsPointV2& point, QgsVertexId::VertexType& type ) const
 {
-  if ( i >= numPoints() )
+  if ( node >= numPoints() )
   {
     return false;
   }
-  vertex = pointN( i );
-  type = ( i % 2 == 0 ) ? QgsVertexId::SegmentVertex : QgsVertexId::CurveVertex;
+  point = pointN( node );
+  type = ( node % 2 == 0 ) ? QgsVertexId::SegmentVertex : QgsVertexId::CurveVertex;
   return true;
 }
 
@@ -952,4 +958,129 @@ void QgsCircularStringV2::insertVertexBetween( int after, int before, int pointO
   {
     mM.insert( before, ( mM[after] + mM[before] ) / 2.0 );
   }
+}
+
+double QgsCircularStringV2::vertexAngle( const QgsVertexId& vId ) const
+{
+  int before = vId.vertex - 1;
+  int vertex = vId.vertex;
+  int after = vId.vertex + 1;
+
+  if ( vId.vertex % 2 != 0 ) // a curve vertex
+  {
+    if ( vId.vertex >= 1 && vId.vertex < numPoints() - 1 )
+    {
+      return QgsGeometryUtils::circleTangentDirection( QgsPointV2( mX[vertex], mY[vertex] ), QgsPointV2( mX[before], mY[before] ),
+             QgsPointV2( mX[vertex], mY[vertex] ), QgsPointV2( mX[after], mY[after] ) );
+    }
+  }
+  else //a point vertex
+  {
+    if ( vId.vertex == 0 )
+    {
+      return QgsGeometryUtils::circleTangentDirection( QgsPointV2( mX[0], mY[0] ), QgsPointV2( mX[0], mY[0] ),
+             QgsPointV2( mX[1], mY[1] ), QgsPointV2( mX[2], mY[2] ) );
+    }
+    if ( vId.vertex >= numPoints() - 1 )
+    {
+      if ( numPoints() < 3 )
+      {
+        return 0.0;
+      }
+      int a = numPoints() - 3;
+      int b = numPoints() - 2;
+      int c = numPoints() - 1;
+      return QgsGeometryUtils::circleTangentDirection( QgsPointV2( mX[c], mY[c] ), QgsPointV2( mX[a], mY[a] ),
+             QgsPointV2( mX[b], mY[b] ), QgsPointV2( mX[c], mY[c] ) );
+    }
+    else
+    {
+      if ( vId.vertex + 2 > numPoints() - 1 )
+      {
+        return 0.0;
+      }
+
+      int vertex1 = vId.vertex - 2;
+      int vertex2 = vId.vertex - 1;
+      int vertex3 = vId.vertex;
+      double angle1 = QgsGeometryUtils::circleTangentDirection( QgsPointV2( mX[vertex3], mY[vertex3] ),
+                      QgsPointV2( mX[vertex1], mY[vertex1] ), QgsPointV2( mX[vertex2], mY[vertex2] ), QgsPointV2( mX[vertex3], mY[vertex3] ) );
+      int vertex4 = vId.vertex + 1;
+      int vertex5 = vId.vertex + 2;
+      double angle2 = QgsGeometryUtils::circleTangentDirection( QgsPointV2( mX[vertex3], mY[vertex3] ),
+                      QgsPointV2( mX[vertex3], mY[vertex3] ), QgsPointV2( mX[vertex4], mY[vertex4] ), QgsPointV2( mX[vertex5], mY[vertex5] ) );
+      return QgsGeometryUtils::averageAngle( angle1, angle2 );
+    }
+  }
+  return 0.0;
+}
+
+QgsCircularStringV2* QgsCircularStringV2::reversed() const
+{
+  QgsCircularStringV2* copy = clone();
+  std::reverse( copy->mX.begin(), copy->mX.end() );
+  std::reverse( copy->mY.begin(), copy->mY.end() );
+  if ( is3D() )
+  {
+    std::reverse( copy->mZ.begin(), copy->mZ.end() );
+  }
+  if ( isMeasure() )
+  {
+    std::reverse( copy->mM.begin(), copy->mM.end() );
+  }
+  return copy;
+}
+
+bool QgsCircularStringV2::addZValue( double zValue )
+{
+  if ( QgsWKBTypes::hasZ( mWkbType ) )
+    return false;
+
+  mWkbType = QgsWKBTypes::addZ( mWkbType );
+
+  int nPoints = numPoints();
+  mZ.clear();
+  mZ.reserve( nPoints );
+  for ( int i = 0; i < nPoints; ++i )
+  {
+    mZ << zValue;
+  }
+  return true;
+}
+
+bool QgsCircularStringV2::addMValue( double mValue )
+{
+  if ( QgsWKBTypes::hasM( mWkbType ) )
+    return false;
+
+  mWkbType = QgsWKBTypes::addM( mWkbType );
+
+  int nPoints = numPoints();
+  mM.clear();
+  mM.reserve( nPoints );
+  for ( int i = 0; i < nPoints; ++i )
+  {
+    mM << mValue;
+  }
+  return true;
+}
+
+bool QgsCircularStringV2::dropZValue()
+{
+  if ( !QgsWKBTypes::hasZ( mWkbType ) )
+    return false;
+
+  mWkbType = QgsWKBTypes::dropZ( mWkbType );
+  mZ.clear();
+  return true;
+}
+
+bool QgsCircularStringV2::dropMValue()
+{
+  if ( !QgsWKBTypes::hasM( mWkbType ) )
+    return false;
+
+  mWkbType = QgsWKBTypes::dropM( mWkbType );
+  mM.clear();
+  return true;
 }

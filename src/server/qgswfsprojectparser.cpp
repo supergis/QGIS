@@ -20,8 +20,18 @@
 #include "qgsconfigparserutils.h"
 #include "qgsmaplayerregistry.h"
 #include "qgsvectordataprovider.h"
+#include "qgsmapserviceexception.h"
+#include "qgsaccesscontrol.h"
 
-QgsWFSProjectParser::QgsWFSProjectParser( const QString& filePath )
+QgsWFSProjectParser::QgsWFSProjectParser(
+  const QString& filePath
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+  , const QgsAccessControl* ac
+#endif
+)
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+    : mAccessControl( ac )
+#endif
 {
   mProjectParser = QgsConfigCache::instance()->serverConfiguration( filePath );
 }
@@ -61,7 +71,7 @@ void QgsWFSProjectParser::featureTypeList( QDomElement& parentElement, QDomDocum
 
   QMap<QString, QgsMapLayer *> layerMap;
 
-  foreach ( const QDomElement &elem, projectLayerElements )
+  Q_FOREACH ( const QDomElement &elem, projectLayerElements )
   {
     QString type = elem.attribute( "type" );
     if ( type == "vector" )
@@ -76,6 +86,12 @@ void QgsWFSProjectParser::featureTypeList( QDomElement& parentElement, QDomDocum
       {
         continue;
       }
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+      if ( !mAccessControl->layerReadPermission( layer ) )
+      {
+        continue;
+      }
+#endif
       QgsDebugMsg( QString( "add layer %1 to map" ).arg( layer->id() ) );
       layerMap.insert( layer->id(), layer );
 
@@ -312,7 +328,7 @@ void QgsWFSProjectParser::describeFeatureType( const QString& aTypeName, QDomEle
   if ( aTypeName != "" )
   {
     QStringList typeNameSplit = aTypeName.split( "," );
-    foreach ( const QString &str, typeNameSplit )
+    Q_FOREACH ( const QString &str, typeNameSplit )
     {
       if ( str.contains( ":" ) )
         typeNameList << str.section( ":", 1, 1 );
@@ -321,7 +337,7 @@ void QgsWFSProjectParser::describeFeatureType( const QString& aTypeName, QDomEle
     }
   }
 
-  foreach ( const QDomElement &elem, projectLayerElements )
+  Q_FOREACH ( const QDomElement &elem, projectLayerElements )
   {
     QString type = elem.attribute( "type" );
     if ( type == "vector" )
@@ -330,6 +346,13 @@ void QgsWFSProjectParser::describeFeatureType( const QString& aTypeName, QDomEle
       QgsVectorLayer* layer = dynamic_cast<QgsVectorLayer*>( mLayer );
       if ( !layer )
         continue;
+
+#ifdef HAVE_SERVER_PYTHON_PLUGINS
+      if ( !mAccessControl->layerReadPermission( layer ) )
+      {
+        continue;
+      }
+#endif
 
       QString typeName = layer->name();
       typeName = typeName.replace( " ", "_" );
@@ -502,7 +525,7 @@ QList<QgsMapLayer*> QgsWFSProjectParser::mapLayerFromTypeName( const QString& aT
   if ( aTypeName != "" )
   {
     QStringList typeNameSplit = aTypeName.split( "," );
-    foreach ( const QString &str, typeNameSplit )
+    Q_FOREACH ( const QString &str, typeNameSplit )
     {
       if ( str.contains( ":" ) )
         typeNameList << str.section( ":", 1, 1 );
@@ -511,7 +534,7 @@ QList<QgsMapLayer*> QgsWFSProjectParser::mapLayerFromTypeName( const QString& aT
     }
   }
 
-  foreach ( const QDomElement &elem, projectLayerElements )
+  Q_FOREACH ( const QDomElement &elem, projectLayerElements )
   {
     QString type = elem.attribute( "type" );
     if ( type == "vector" )

@@ -26,7 +26,8 @@
 #include "qgsmaplayer.h"
 #include "qgsmaplayerregistry.h"
 
-
+///@cond
+//not part of public API
 class CustomLayerOrderModel : public QAbstractListModel
 {
   public:
@@ -105,7 +106,7 @@ class CustomLayerOrderModel : public QAbstractListModel
     QMimeData* mimeData( const QModelIndexList& indexes ) const override
     {
       QStringList lst;
-      foreach ( QModelIndex index, indexes )
+      Q_FOREACH ( const QModelIndex& index, indexes )
         lst << data( index, Qt::UserRole + 1 ).toString();
 
       QMimeData* mimeData = new QMimeData();
@@ -125,7 +126,7 @@ class CustomLayerOrderModel : public QAbstractListModel
         return false;
 
       QByteArray encodedData = data->data( "application/qgis.layerorderdata" );
-      QStringList lst = QString::fromUtf8( encodedData ).split( "\n" );
+      QStringList lst = QString::fromUtf8( encodedData ).split( '\n' );
 
       if ( row < 0 )
         row = mOrder.count();
@@ -171,6 +172,7 @@ class CustomLayerOrderModel : public QAbstractListModel
     QgsLayerTreeMapCanvasBridge* mBridge;
     QStringList mOrder;
 };
+/// @endcond
 
 
 QgsCustomLayerOrderWidget::QgsCustomLayerOrderWidget( QgsLayerTreeMapCanvasBridge* bridge, QWidget* parent )

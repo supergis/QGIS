@@ -20,8 +20,11 @@
 bool QgsVectorLayerEditPassthrough::addFeature( QgsFeature& f )
 {
 
-  if ( L->dataProvider()->addFeatures( QgsFeatureList() << f ) )
+  QgsFeatureList fl;
+  fl << f;
+  if ( L->dataProvider()->addFeatures( fl ) )
   {
+    f = fl.first();
     emit featureAdded( f.id() );
     return true;
   }
@@ -32,7 +35,7 @@ bool QgsVectorLayerEditPassthrough::addFeatures( QgsFeatureList& features )
 {
   if ( L->dataProvider()->addFeatures( features ) )
   {
-    foreach ( const QgsFeature& f, features )
+    Q_FOREACH ( const QgsFeature& f, features )
     {
       emit featureAdded( f.id() );
     }
@@ -46,6 +49,18 @@ bool QgsVectorLayerEditPassthrough::deleteFeature( QgsFeatureId fid )
   if ( L->dataProvider()->deleteFeatures( QgsFeatureIds() << fid ) )
   {
     emit featureDeleted( fid );
+    return true;
+  }
+  return false;
+}
+
+bool QgsVectorLayerEditPassthrough::deleteFeatures( QgsFeatureIds fids )
+{
+  if ( L->dataProvider()->deleteFeatures( fids ) )
+  {
+    Q_FOREACH ( const QgsFeatureId& fid, fids )
+      emit featureDeleted( fid );
+
     return true;
   }
   return false;

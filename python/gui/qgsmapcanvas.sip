@@ -31,9 +31,9 @@ class QgsMapCanvas : QGraphicsView
 
 %ConvertToSubClassCode
   if (dynamic_cast<QgsMapCanvas*>(sipCpp) != NULL)
-    sipClass = sipClass_QgsMapCanvas;
+    sipType = sipType_QgsMapCanvas;
   else
-    sipClass = NULL;
+    sipType = NULL;
 %End
 
   public:
@@ -338,6 +338,30 @@ class QgsMapCanvas : QGraphicsView
      */
     void setSnappingUtils( QgsSnappingUtils* utils );
 
+    /** Sets an expression context scope for the map canvas. This scope is injected into the expression
+     * context used for rendering the map, and can be used to apply specific variable overrides for
+     * expression evaluation for the map canvas render. This method will overwrite the existing expression
+     * context scope for the canvas.
+     * @param scope new expression context scope
+     * @note added in QGIS 2.12
+     * @see expressionContextScope()
+     */
+    void setExpressionContextScope( const QgsExpressionContextScope& scope );
+
+    /** Returns a reference to the expression context scope for the map canvas. This scope is injected
+     * into the expression context used for rendering the map, and can be used to apply specific variable
+     * overrides for expression evaluation for the map canvas render.
+     * @note added in QGIS 2.12
+     * @see setExpressionContextScope()
+     */
+    QgsExpressionContextScope& expressionContextScope();
+
+    /** Returns a const reference to the expression context scope for the map canvas.
+     * @note added in QGIS 2.12
+     * @see setExpressionContextScope()
+     */
+    // const QgsExpressionContextScope& expressionContextScope() const;
+
   public slots:
 
     /** Repaints the canvas map*/
@@ -347,7 +371,7 @@ class QgsMapCanvas : QGraphicsView
     void selectionChangedSlot();
 
     //! Save the convtents of the map canvas to disk as an image
-    void saveAsImage( QString theFileName, QPixmap * QPixmap = 0, QString = "PNG" );
+    void saveAsImage( const QString& theFileName, QPixmap * QPixmap = 0, const QString& = "PNG" );
 
     //! This slot is connected to the visibility change of one or more layers
     void layerStateChange();

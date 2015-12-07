@@ -30,7 +30,7 @@ QgsHistogramDiagram::~QgsHistogramDiagram()
 {
 }
 
-QgsDiagram* QgsHistogramDiagram::clone() const
+QgsHistogramDiagram* QgsHistogramDiagram::clone() const
 {
   return new QgsHistogramDiagram( *this );
 }
@@ -53,7 +53,7 @@ QSizeF QgsHistogramDiagram::diagramSize( const QgsFeature& feature, const QgsRen
   if ( feature.fields() )
     expressionContext.setFields( *feature.fields() );
 
-  foreach ( QString cat, s.categoryAttributes )
+  Q_FOREACH ( const QString& cat, s.categoryAttributes )
   {
     QgsExpression* expression = getExpression( cat, expressionContext );
     maxValue = qMax( expression->evaluate( &expressionContext ).toDouble(), maxValue );
@@ -93,11 +93,11 @@ QSizeF QgsHistogramDiagram::diagramSize( const QgsAttributes& attributes, const 
     return QSizeF(); //zero size if no attributes
   }
 
-  double maxValue = attributes[0].toDouble();
+  double maxValue = attributes.at( 0 ).toDouble();
 
   for ( int i = 0; i < attributes.count(); ++i )
   {
-    maxValue = qMax( attributes[i].toDouble(), maxValue );
+    maxValue = qMax( attributes.at( i ).toDouble(), maxValue );
   }
 
   switch ( s.diagramOrientation )
@@ -135,7 +135,7 @@ void QgsHistogramDiagram::renderDiagram( const QgsFeature& feature, QgsRenderCon
   if ( feature.fields() )
     expressionContext.setFields( *feature.fields() );
 
-  foreach ( QString cat, s.categoryAttributes )
+  Q_FOREACH ( const QString& cat, s.categoryAttributes )
   {
     QgsExpression* expression = getExpression( cat, expressionContext );
     double currentVal = expression->evaluate( &expressionContext ).toDouble();

@@ -21,7 +21,7 @@
 #include "qgspluginlayer.h"
 #include "qgsmaplayerregistry.h"
 
-QgsPluginLayerType::QgsPluginLayerType( QString name )
+QgsPluginLayerType::QgsPluginLayerType( const QString& name )
     : mName( name )
 {
 }
@@ -75,7 +75,7 @@ QgsPluginLayerRegistry::~QgsPluginLayerRegistry()
   if ( !mPluginLayerTypes.isEmpty() )
   {
     QgsDebugMsg( "QgsPluginLayerRegistry::~QgsPluginLayerRegistry(): creator list not empty" );
-    foreach ( QString typeName, mPluginLayerTypes.keys() )
+    Q_FOREACH ( const QString& typeName, mPluginLayerTypes.keys() )
       removePluginLayerType( typeName );
   }
 }
@@ -97,14 +97,14 @@ bool QgsPluginLayerRegistry::addPluginLayerType( QgsPluginLayerType* type )
 }
 
 
-bool QgsPluginLayerRegistry::removePluginLayerType( QString typeName )
+bool QgsPluginLayerRegistry::removePluginLayerType( const QString& typeName )
 {
   if ( !mPluginLayerTypes.contains( typeName ) )
     return false;
 
   // remove all remaining layers of this type - to avoid invalid behaviour
   QList<QgsMapLayer*> layers = QgsMapLayerRegistry::instance()->mapLayers().values();
-  foreach ( QgsMapLayer* layer, layers )
+  Q_FOREACH ( QgsMapLayer* layer, layers )
   {
     if ( layer->type() == QgsMapLayer::PluginLayer )
     {
@@ -121,13 +121,13 @@ bool QgsPluginLayerRegistry::removePluginLayerType( QString typeName )
   return true;
 }
 
-QgsPluginLayerType* QgsPluginLayerRegistry::pluginLayerType( QString typeName )
+QgsPluginLayerType* QgsPluginLayerRegistry::pluginLayerType( const QString& typeName )
 {
   return mPluginLayerTypes.value( typeName, NULL );
 }
 
 
-QgsPluginLayer* QgsPluginLayerRegistry::createLayer( QString typeName, const QString& uri )
+QgsPluginLayer* QgsPluginLayerRegistry::createLayer( const QString& typeName, const QString& uri )
 {
   QgsPluginLayerType* type = pluginLayerType( typeName );
   if ( !type )

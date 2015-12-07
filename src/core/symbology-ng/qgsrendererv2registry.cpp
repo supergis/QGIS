@@ -59,7 +59,7 @@ QgsRendererV2Registry::QgsRendererV2Registry()
 
 QgsRendererV2Registry::~QgsRendererV2Registry()
 {
-  foreach ( QString name, mRenderers.keys() )
+  Q_FOREACH ( const QString& name, mRenderers.keys() )
   {
     delete mRenderers[name];
   }
@@ -83,7 +83,7 @@ bool QgsRendererV2Registry::addRenderer( QgsRendererV2AbstractMetadata* metadata
   return true;
 }
 
-bool QgsRendererV2Registry::removeRenderer( QString rendererName )
+bool QgsRendererV2Registry::removeRenderer( const QString& rendererName )
 {
   if ( !mRenderers.contains( rendererName ) )
     return false;
@@ -94,7 +94,7 @@ bool QgsRendererV2Registry::removeRenderer( QString rendererName )
   return true;
 }
 
-QgsRendererV2AbstractMetadata* QgsRendererV2Registry::rendererMetadata( QString rendererName )
+QgsRendererV2AbstractMetadata* QgsRendererV2Registry::rendererMetadata( const QString& rendererName )
 {
   return mRenderers.value( rendererName );
 }

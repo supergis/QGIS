@@ -15,18 +15,22 @@
 
 #include "qgsoraclefeatureiterator.h"
 #include "qgsoracleprovider.h"
+#include "qgsoracleconnpool.h"
+#include "qgsoracleexpressioncompiler.h"
 
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
 #include "qgsgeometry.h"
 
 #include <QObject>
+#include <QSettings>
 
 QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource* source, bool ownSource, const QgsFeatureRequest &request )
     : QgsAbstractFeatureIteratorFromSource<QgsOracleFeatureSource>( source, ownSource, request )
     , mRewind( false )
+    , mExpressionCompiled( false )
 {
-  mConnection = QgsOracleConn::connectDb( mSource->mUri.connectionInfo() );
+  mConnection = QgsOracleConnPool::instance()->acquireConnection( mSource->mUri.connectionInfo() );
   if ( !mConnection )
   {
     close();
@@ -89,6 +93,15 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource* sour
       break;
 
     case QgsFeatureRequest::FilterExpression:
+      if ( QSettings().value( "/qgis/compileExpressions", true ).toBool() )
+      {
+        QgsOracleExpressionCompiler compiler( mSource );
+        if ( compiler.compile( request.filterExpression() ) == QgsSqlExpressionCompiler::Complete )
+        {
+          whereClause = QgsOracleUtils::andWhereClauses( whereClause, compiler.result() );
+          mExpressionCompiled = true;
+        }
+      }
       break;
 
     case QgsFeatureRequest::FilterRect:
@@ -104,6 +117,14 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource* sour
     whereClause += QgsOracleConn::databaseTypeFilter( "featureRequest", mSource->mGeometryColumn, mSource->mRequestedGeomType );
   }
 
+  if ( request.limit() >= 0 )
+  {
+    if ( !whereClause.isEmpty() )
+      whereClause += " AND ";
+
+    whereClause += QString( "rownum<=%1" ).arg( request.limit() );
+  }
+
   if ( !mSource->mSqlWhereClause.isEmpty() )
   {
     if ( !whereClause.isEmpty() )
@@ -117,6 +138,14 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource* sour
 QgsOracleFeatureIterator::~QgsOracleFeatureIterator()
 {
   close();
+}
+
+bool QgsOracleFeatureIterator::nextFeatureFilterExpression( QgsFeature& f )
+{
+  if ( !mExpressionCompiled )
+    return QgsAbstractFeatureIterator::nextFeatureFilterExpression( f );
+  else
+    return fetchFeature( f );
 }
 
 bool QgsOracleFeatureIterator::fetchFeature( QgsFeature& feature )
@@ -187,7 +216,7 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature& feature )
 
         if ( mSource->mPrimaryKeyType == pktFidMap )
         {
-          foreach ( int idx, mSource->mPrimaryKeyAttrs )
+          Q_FOREACH ( int idx, mSource->mPrimaryKeyAttrs )
           {
             const QgsField &fld = mSource->mFields[idx];
 
@@ -220,7 +249,7 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature& feature )
     QgsDebugMsgLevel( QString( "fid=%1" ).arg( fid ), 5 );
 
     // iterate attributes
-    foreach ( int idx, mAttributeList )
+    Q_FOREACH ( int idx, mAttributeList )
     {
       if ( mSource->mPrimaryKeyAttrs.contains( idx ) )
         continue;
@@ -228,7 +257,18 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature& feature )
       const QgsField &fld = mSource->mFields[idx];
 
       QVariant v = mQry.value( col );
-      if ( v.type() != fld.type() )
+      if ( fld.type() == QVariant::ByteArray && fld.typeName().endsWith( ".SDO_GEOMETRY" ) )
+      {
+        QByteArray *ba = static_cast<QByteArray*>( v.data() );
+        unsigned char *copy = new unsigned char[ba->size()];
+        memcpy( copy, ba->constData(), ba->size() );
+
+        QgsGeometry *g = new QgsGeometry();
+        g->fromWkb( copy, ba->size() );
+        v = g->exportToWkt();
+        delete g;
+      }
+      else if ( v.type() != fld.type() )
         v = QgsVectorDataProvider::convertValue( fld.type(), v.toString() );
       feature.setAttribute( idx, v );
 
@@ -258,7 +298,7 @@ bool QgsOracleFeatureIterator::close()
     mQry.finish();
 
   if ( mConnection )
-    mConnection->disconnect();
+    QgsOracleConnPool::instance()->releaseConnection( mConnection );
   mConnection = 0;
 
   iteratorClosed();
@@ -291,7 +331,7 @@ bool QgsOracleFeatureIterator::openQuery( QString whereClause )
         break;
 
       case pktFidMap:
-        foreach ( int idx, mSource->mPrimaryKeyAttrs )
+        Q_FOREACH ( int idx, mSource->mPrimaryKeyAttrs )
         {
           query += delim + mConnection->fieldExpression( mSource->mFields[idx] );
           delim = ",";
@@ -304,7 +344,7 @@ bool QgsOracleFeatureIterator::openQuery( QString whereClause )
         break;
     }
 
-    foreach ( int idx, mAttributeList )
+    Q_FOREACH ( int idx, mAttributeList )
     {
       if ( mSource->mPrimaryKeyAttrs.contains( idx ) )
         continue;

@@ -410,11 +410,11 @@ void QgsGPSInformationWidget::connectGps()
   }
   else if ( mRadGpsd->isChecked() )
   {
-    port = QString( "%1:%2:%3" ).arg( mGpsdHost->text() ).arg( mGpsdPort->text() ).arg( mGpsdDevice->text() );
+    port = QString( "%1:%2:%3" ).arg( mGpsdHost->text(), mGpsdPort->text(), mGpsdDevice->text() );
   }
   else if ( mRadInternal->isChecked() )
   {
-    port = QString( "internalGPS" );
+    port = QLatin1String( "internalGPS" );
   }
 
   mGPSPlainTextEdit->appendPlainText( tr( "Connecting..." ) );
@@ -847,8 +847,8 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
           QMessageBox::information( this,
                                     tr( "Error" ),
                                     tr( "Could not commit changes to layer %1\n\nErrors: %2\n" )
-                                    .arg( vlayer->name() )
-                                    .arg( vlayer->commitErrors().join( "\n  " ) ) );
+                                    .arg( vlayer->name(),
+                                          vlayer->commitErrors().join( "\n  " ) ) );
         }
 
         vlayer->startEditing();
@@ -977,8 +977,8 @@ void QgsGPSInformationWidget::on_mBtnCloseFeature_clicked()
           QMessageBox::information( this,
                                     tr( "Error" ),
                                     tr( "Could not commit changes to layer %1\n\nErrors: %2\n" )
-                                    .arg( vlayer->name() )
-                                    .arg( vlayer->commitErrors().join( "\n  " ) ) );
+                                    .arg( vlayer->name(),
+                                          vlayer->commitErrors().join( "\n  " ) ) );
         }
 
         vlayer->startEditing();
@@ -1051,7 +1051,7 @@ void QgsGPSInformationWidget::on_mBtnLogFile_clicked()
   // Retrieve last used log file dir from persistent settings
   QSettings settings;
   QString settingPath( "/gps/lastLogFileDir" );
-  QString lastUsedDir = settings.value( settingPath, "." ).toString();
+  QString lastUsedDir = settings.value( settingPath, QDir::homePath() ).toString();
   QString saveFilePath = QFileDialog::getSaveFileName( this, tr( "Save GPS log file as" ), lastUsedDir, tr( "NMEA files" ) + " (*.nmea)" );
   if ( saveFilePath.isNull() ) //canceled
   {

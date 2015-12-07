@@ -64,10 +64,6 @@ class PostGisDBPlugin(DBPlugin):
     def connectionSettingsKey(self):
         return '/PostgreSQL/connections'
 
-    @classmethod
-    def connectionSettingsFileKey(self):
-        return "database"
-
     def databasesFactory(self, connection, uri):
         return PGDatabase(connection, uri)
 
@@ -262,8 +258,9 @@ class PGRasterTable(PGTable, RasterTable):
 
         return PGRasterTableInfo(self)
 
-    def gdalUri(self):
-        uri = self.database().uri()
+    def gdalUri(self, uri=None):
+        if not uri:
+            uri = self.database().uri()
         schema = (u'schema=%s' % self.schemaName()) if self.schemaName() else ''
         dbname = (u'dbname=%s' % uri.database()) if uri.database() else ''
         host = (u'host=%s' % uri.host()) if uri.host() else ''
@@ -284,13 +281,30 @@ class PGRasterTable(PGTable, RasterTable):
         return gdalUri
 
     def mimeUri(self):
+        # QGIS has no provider for PGRasters, let's use GDAL
         uri = u"raster:gdal:%s:%s" % (self.name, re.sub(":", "\:", self.gdalUri()))
         return uri
 
     def toMapLayer(self):
-        from qgis.core import QgsRasterLayer, QgsContrastEnhancement
+        from qgis.core import QgsRasterLayer, QgsContrastEnhancement, QgsDataSourceURI, QgsCredentials
 
         rl = QgsRasterLayer(self.gdalUri(), self.name)
+        if not rl.isValid():
+            err = rl.error().summary()
+            uri = QgsDataSourceURI(self.database().uri())
+            conninfo = uri.connectionInfo()
+            username = uri.username()
+            password = uri.password()
+
+            for i in range(3):
+                (ok, username, password) = QgsCredentials.instance().get(conninfo, username, password, err)
+                if ok:
+                    uri.setUsername(username)
+                    uri.setPassword(password)
+                    rl = QgsRasterLayer(self.gdalUri(uri), self.name)
+                    if rl.isValid():
+                        break
+
         if rl.isValid():
             rl.setContrastEnhancement(QgsContrastEnhancement.StretchToMinimumMaximum)
         return rl

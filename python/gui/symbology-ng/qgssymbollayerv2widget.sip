@@ -11,6 +11,46 @@ class QgsSymbolLayerV2Widget : QWidget
     virtual void setSymbolLayer( QgsSymbolLayerV2* layer ) = 0;
     virtual QgsSymbolLayerV2* symbolLayer() = 0;
 
+
+    /** Returns the expression context used for the widget, if set. This expression context is used for
+     * evaluating data defined symbol properties and for populating based expression widgets in
+     * the layer widget.
+     * @note added in QGIS 2.12
+     * @see setExpressionContext()
+     */
+    QgsExpressionContext* expressionContext() const;
+
+    /** Sets the map canvas associated with the widget. This allows the widget to retrieve the current
+     * map scale and other properties from the canvas.
+     * @param canvas map canvas
+     * @see mapCanvas()
+     * @note added in QGIS 2.12
+     */
+    virtual void setMapCanvas( QgsMapCanvas* canvas );
+
+    /** Returns the map canvas associated with the widget.
+     * @see setMapCanvas
+     * @note added in QGIS 2.12
+     */
+    const QgsMapCanvas* mapCanvas() const;
+
+    /** Returns the vector layer associated with the widget.
+     * @note added in QGIS 2.12
+     */
+    const QgsVectorLayer* vectorLayer() const;
+
+  public slots:
+
+    /** Sets the optional expression context used for the widget. This expression context is used for
+     * evaluating data defined symbol properties and for populating based expression widgets in
+     * the layer widget.
+     * @param context expression context pointer. Ownership is not transferred and the object must
+     * be kept alive for the lifetime of the layer widget.
+     * @note added in QGIS 2.12
+     * @see expressionContext()
+     */
+    void setExpressionContext( QgsExpressionContext* context );
+
   protected:
 
     void registerDataDefinedButton( QgsDataDefinedButton * button, const QString & propertyName, QgsDataDefinedButton::DataType type, const QString & description );

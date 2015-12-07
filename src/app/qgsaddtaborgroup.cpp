@@ -24,7 +24,7 @@
 #include <QTreeWidgetItem>
 #include <QComboBox>
 
-QgsAddTabOrGroup::QgsAddTabOrGroup( QgsVectorLayer *lyr, QList < TabPair > tabList, QWidget * parent )
+QgsAddTabOrGroup::QgsAddTabOrGroup( QgsVectorLayer *lyr, const QList < TabPair >& tabList, QWidget * parent )
     : QDialog( parent )
     , mLayer( lyr )
     , mTabs( tabList )
@@ -36,7 +36,7 @@ QgsAddTabOrGroup::QgsAddTabOrGroup( QgsVectorLayer *lyr, QList < TabPair > tabLi
   if ( mTabs.size() > 0 )
   {
     int i = 0;
-    foreach ( TabPair tab, mTabs )
+    Q_FOREACH ( const TabPair& tab, mTabs )
     {
       mTabList->addItem( tab.first, i );
       ++i;

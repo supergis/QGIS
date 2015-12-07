@@ -22,7 +22,7 @@
 static QgsMapLayer* _rasterLayer( const QString& filename )
 {
   QMap<QString, QgsMapLayer*> layers = QgsMapLayerRegistry::instance()->mapLayers();
-  foreach ( QgsMapLayer* layer, layers.values() )
+  Q_FOREACH ( QgsMapLayer* layer, layers.values() )
   {
     if ( layer->type() == QgsMapLayer::RasterLayer && layer->source() == filename )
       return layer;
@@ -44,7 +44,7 @@ static QString _rasterLayerName( const QString& filename )
 /** Helper class to report progress */
 struct QgsAlignRasterDialogProgress : public QgsAlignRaster::ProgressHandler
 {
-  QgsAlignRasterDialogProgress( QProgressBar* pb ) : mPb( pb ) {}
+  explicit QgsAlignRasterDialogProgress( QProgressBar* pb ) : mPb( pb ) {}
   virtual bool progress( double complete ) override
   {
     mPb->setValue(( int ) qRound( complete * 100 ) );
@@ -116,7 +116,7 @@ void QgsAlignRasterDialog::populateLayersView()
 
   QStandardItemModel* model = new QStandardItemModel();
   int i = 0;
-  foreach ( QgsAlignRaster::Item item, mAlign->rasters() )
+  Q_FOREACH ( QgsAlignRaster::Item item, mAlign->rasters() )
   {
     QString layerName = _rasterLayerName( item.inputFilename );
 
@@ -344,7 +344,7 @@ void QgsAlignRasterDialog::runAlign()
   {
     if ( mChkAddToCanvas->isChecked() )
     {
-      foreach ( const QgsAlignRaster::Item& item, mAlign->rasters() )
+      Q_FOREACH ( const QgsAlignRaster::Item& item, mAlign->rasters() )
       {
         QgsRasterLayer* layer = new QgsRasterLayer( item.outputFilename, QFileInfo( item.outputFilename ).baseName() );
         if ( layer->isValid() )
@@ -436,7 +436,7 @@ void QgsAlignRasterLayerConfigDialog::setItem( const QString& inputFilename, con
 void QgsAlignRasterLayerConfigDialog::browseOutputFilename()
 {
   QSettings settings;
-  QString dirName = editOutput->text().isEmpty() ? settings.value( "/UI/lastRasterFileDir", "." ).toString() : editOutput->text();
+  QString dirName = editOutput->text().isEmpty() ? settings.value( "/UI/lastRasterFileDir", QDir::homePath() ).toString() : editOutput->text();
 
   QString fileName = QFileDialog::getSaveFileName( this, tr( "Select output file" ), dirName, tr( "GeoTIFF" ) + " (*.tif *.tiff *.TIF *.TIFF)" );
 
