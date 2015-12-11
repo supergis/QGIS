@@ -89,9 +89,14 @@ bool QgsOgrProvider::convertField( QgsField &field, const QTextCodec &encoding )
   switch ( field.type() )
   {
     case QVariant::LongLong:
+#if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM >= 2000000
+      ogrType = OFTInteger64;
+      ogrPrecision = 0;
+#else
       ogrType = OFTString;
-      ogrWidth = ogrWidth > 0 && ogrWidth <= 21 ? ogrWidth : 21;
       ogrPrecision = -1;
+#endif
+      ogrWidth = ogrWidth > 0 && ogrWidth <= 21 ? ogrWidth : 21;
       break;
 
     case QVariant::String:
@@ -439,6 +444,9 @@ QgsOgrProvider::QgsOgrProvider( QString const & uri )
 
   mNativeTypes
   << QgsVectorDataProvider::NativeType( tr( "Whole number (integer)" ), "integer", QVariant::Int, 1, 10 )
+#if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM >= 2000000
+  << QgsVectorDataProvider::NativeType( tr( "Whole number (integer 64 bit)" ), "integer64", QVariant::LongLong, 1, 10 )
+#endif
   << QgsVectorDataProvider::NativeType( tr( "Decimal number (real)" ), "double", QVariant::Double, 1, 20, 0, 15 )
   << QgsVectorDataProvider::NativeType( tr( "Text (string)" ), "string", QVariant::String, 1, 255 )
   << QgsVectorDataProvider::NativeType( tr( "Date" ), "date", QVariant::Date, 8, 8 );
@@ -673,7 +681,7 @@ QStringList QgsOgrProvider::subLayers() const
       OGR_L_ResetReading( layer );
       // it may happen that there are no features in the layer, in that case add unknown type
       // to show to user that the layer exists but it is empty
-      if ( fCount.size() == 0 )
+      if ( fCount.isEmpty() )
       {
         fCount[wkbUnknown] = 0;
       }
@@ -771,6 +779,9 @@ void QgsOgrProvider::loadFields()
       switch ( ogrType )
       {
         case OFTInteger: varType = QVariant::Int; break;
+#if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM >= 2000000
+        case OFTInteger64: varType = QVariant::LongLong; break;
+#endif
         case OFTReal: varType = QVariant::Double; break;
 #if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM >= 1400
         case OFTDate: varType = QVariant::Date; break;
@@ -1131,6 +1142,11 @@ bool QgsOgrProvider::addAttributes( const QList<QgsField> &attributes )
       case QVariant::Int:
         type = OFTInteger;
         break;
+#if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM >= 2000000
+      case QVariant::LongLong:
+        type = OFTInteger64;
+        break;
+#endif
       case QVariant::Double:
         type = OFTReal;
         break;
@@ -2273,7 +2289,7 @@ QGISEXTERN bool createEmptyDataSource( const QString &uri,
   {
     QStringList fields = it->second.split( ';' );
 
-    if ( fields.size() == 0 )
+    if ( fields.isEmpty() )
       continue;
 
     int width = fields.size() > 1 ? fields[1].toInt() : -1;

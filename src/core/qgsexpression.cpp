@@ -409,6 +409,16 @@ static QVariant fcnGetVariable( const QVariantList& values, const QgsExpressionC
   return context->variable( name );
 }
 
+static QVariant fcnEval( const QVariantList& values, const QgsExpressionContext* context, QgsExpression* parent )
+{
+  if ( !context )
+    return QVariant();
+
+  QString expString = getStringValue( values.at( 0 ), parent );
+  QgsExpression expression( expString );
+  return expression.evaluate( context );
+}
+
 static QVariant fcnSqrt( const QVariantList& values, const QgsExpressionContext*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
@@ -421,6 +431,16 @@ static QVariant fcnAbs( const QVariantList& values, const QgsExpressionContext*,
   return QVariant( fabs( val ) );
 }
 
+static QVariant fcnRadians( const QVariantList& values, const QgsExpressionContext*, QgsExpression* parent )
+{
+  double deg = getDoubleValue( values.at( 0 ), parent );
+  return ( deg * M_PI ) / 180;
+}
+static QVariant fcnDegrees( const QVariantList& values, const QgsExpressionContext*, QgsExpression* parent )
+{
+  double rad = getDoubleValue( values.at( 0 ), parent );
+  return ( 180 * rad ) / M_PI;
+}
 static QVariant fcnSin( const QVariantList& values, const QgsExpressionContext*, QgsExpression* parent )
 {
   double x = getDoubleValue( values.at( 0 ), parent );
@@ -1700,6 +1720,14 @@ static QVariant fcnBuffer( const QVariantList& values, const QgsExpressionContex
   delete geom;
   return result;
 }
+static QVariant fcnTranslate( const QVariantList& values, const QgsExpressionContext*, QgsExpression* parent )
+{
+  QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
+  double dx = getDoubleValue( values.at( 1 ), parent );
+  double dy = getDoubleValue( values.at( 2 ), parent );
+  fGeom.translate( dx, dy );
+  return QVariant::fromValue( fGeom );
+}
 static QVariant fcnCentroid( const QVariantList& values, const QgsExpressionContext*, QgsExpression* parent )
 {
   QgsGeometry fGeom = getGeometry( values.at( 0 ), parent );
@@ -2117,6 +2145,34 @@ static QVariant fncSetColorPart( const QVariantList &values, const QgsExpression
   return QgsSymbolLayerV2Utils::encodeColor( color );
 }
 
+static QVariant fncDarker( const QVariantList &values, const QgsExpressionContext*, QgsExpression *parent )
+{
+  QColor color = QgsSymbolLayerV2Utils::decodeColor( values.at( 0 ).toString() );
+  if ( ! color.isValid() )
+  {
+    parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to color" ).arg( values.at( 0 ).toString() ) );
+    return QVariant();
+  }
+
+  color = color.darker( getIntValue( values.at( 1 ), parent ) );
+
+  return QgsSymbolLayerV2Utils::encodeColor( color );
+}
+
+static QVariant fncLighter( const QVariantList &values, const QgsExpressionContext*, QgsExpression *parent )
+{
+  QColor color = QgsSymbolLayerV2Utils::decodeColor( values.at( 0 ).toString() );
+  if ( ! color.isValid() )
+  {
+    parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to color" ).arg( values.at( 0 ).toString() ) );
+    return QVariant();
+  }
+
+  color = color.lighter( getIntValue( values.at( 1 ), parent ) );
+
+  return QgsSymbolLayerV2Utils::encodeColor( color );
+}
+
 static QVariant fcnSpecialColumn( const QVariantList& values, const QgsExpressionContext*, QgsExpression* parent )
 {
   QString varName = getStringValue( values.at( 0 ), parent );
@@ -2161,7 +2217,7 @@ static QVariant fcnGetFeature( const QVariantList& values, const QgsExpressionCo
   if ( !vl )
   {
     QList<QgsMapLayer *> layersByName = QgsMapLayerRegistry::instance()->mapLayersByName( layerString );
-    if ( layersByName.size() > 0 )
+    if ( !layersByName.isEmpty() )
     {
       vl = qobject_cast<QgsVectorLayer*>( layersByName.at( 0 ) );
     }
@@ -2207,7 +2263,7 @@ static QVariant fcnGetLayerProperty( const QVariantList& values, const QgsExpres
   if ( !layer )
   {
     QList<QgsMapLayer *> layersByName = QgsMapLayerRegistry::instance()->mapLayersByName( layerIdOrName );
-    if ( layersByName.size() > 0 )
+    if ( !layersByName.isEmpty() )
     {
       layer = layersByName.at( 0 );
     }
@@ -2372,6 +2428,8 @@ const QList<QgsExpression::Function*>& QgsExpression::Functions()
   {
     gmFunctions
     << new StaticFunction( "sqrt", 1, fcnSqrt, "Math" )
+    << new StaticFunction( "radians", 1, fcnRadians, "Math" )
+    << new StaticFunction( "degrees", 1, fcnDegrees, "Math" )
     << new StaticFunction( "abs", 1, fcnAbs, "Math" )
     << new StaticFunction( "cos", 1, fcnCos, "Math" )
     << new StaticFunction( "sin", 1, fcnSin, "Math" )
@@ -2448,6 +2506,8 @@ const QList<QgsExpression::Function*>& QgsExpression::Functions()
     << new StaticFunction( "color_cmyk", 4, fcnColorCmyk, "Color" )
     << new StaticFunction( "color_cmyka", 5, fncColorCmyka, "Color" )
     << new StaticFunction( "color_part", 2, fncColorPart, "Color" )
+    << new StaticFunction( "darker", 2, fncDarker, "Color" )
+    << new StaticFunction( "lighter", 2, fncLighter, "Color" )
     << new StaticFunction( "set_color_part", 3, fncSetColorPart, "Color" )
     << new StaticFunction( "$geometry", 0, fcnGeometry, "GeometryGroup", QString(), true )
     << new StaticFunction( "$area", 0, fcnGeomArea, "GeometryGroup", QString(), true )
@@ -2485,6 +2545,7 @@ const QList<QgsExpression::Function*>& QgsExpression::Functions()
     << new StaticFunction( "contains", 2, fcnContains, "GeometryGroup" )
     << new StaticFunction( "overlaps", 2, fcnOverlaps, "GeometryGroup" )
     << new StaticFunction( "within", 2, fcnWithin, "GeometryGroup" )
+    << new StaticFunction( "translate", 3, fcnTranslate, "GeometryGroup" )
     << new StaticFunction( "buffer", -1, fcnBuffer, "GeometryGroup" )
     << new StaticFunction( "centroid", 1, fcnCentroid, "GeometryGroup" )
     << new StaticFunction( "reverse", 1, fcnReverse, "GeometryGroup" )
@@ -2522,6 +2583,7 @@ const QList<QgsExpression::Function*>& QgsExpression::Functions()
     //return all attributes string for referencedColumns - this is caught by
     // QgsFeatureRequest::setSubsetOfAttributes and causes all attributes to be fetched by the
     // feature request
+    << new StaticFunction( "eval", 1, fcnEval, "General", QString(), true, QStringList( QgsFeatureRequest::AllAttributes ) )
     << new StaticFunction( "attribute", 2, fcnAttribute, "Record", QString(), false, QStringList( QgsFeatureRequest::AllAttributes ) )
 
     << new StaticFunction( "_specialcol_", 1, fcnSpecialColumn, "Special" )
@@ -3564,17 +3626,17 @@ bool QgsExpression::NodeColumnRef::prepare( QgsExpression *parent, const QgsExpr
 
   QgsFields fields = qvariant_cast<QgsFields>( context->variable( QgsExpressionContext::EXPR_FIELDS ) );
 
-  for ( int i = 0; i < fields.count(); ++i )
+  mIndex = fields.fieldNameIndex( mName );
+  if ( mIndex >= 0 )
   {
-    if ( QString::compare( fields.at( i ).name(), mName, Qt::CaseInsensitive ) == 0 )
-    {
-      mIndex = i;
-      return true;
-    }
+    return true;
   }
-  parent->mEvalErrorString = tr( "Column '%1' not found" ).arg( mName );
-  mIndex = -1;
-  return false;
+  else
+  {
+    parent->mEvalErrorString = tr( "Column '%1' not found" ).arg( mName );
+    mIndex = -1;
+    return false;
+  }
 }
 
 QString QgsExpression::NodeColumnRef::dump() const
@@ -3719,7 +3781,7 @@ QString QgsExpression::helptext( QString name )
     {
       helpContents += QString( "<code><span class=\"functionname\">%1</span>" ).arg( name );
 
-      if ( f.mType == tr( "function" ) && ( f.mName[0] != '$' || v.mArguments.size() > 0 || v.mVariableLenArguments ) )
+      if ( f.mType == tr( "function" ) && ( f.mName[0] != '$' || !v.mArguments.isEmpty() || v.mVariableLenArguments ) )
       {
         helpContents += '(';
 
@@ -3743,7 +3805,7 @@ QString QgsExpression::helptext( QString name )
       helpContents += "</code>";
     }
 
-    if ( v.mArguments.size() > 0 )
+    if ( !v.mArguments.isEmpty() )
     {
       helpContents += QString( "<h4>%1</h4>\n<div class=\"arguments\">\n<table>" ).arg( tr( "Arguments" ) );
 
@@ -3758,7 +3820,7 @@ QString QgsExpression::helptext( QString name )
       helpContents += "</table>\n</div>\n";
     }
 
-    if ( v.mExamples.size() > 0 )
+    if ( !v.mExamples.isEmpty() )
     {
       helpContents += QString( "<h4>%1</h4>\n<div class=\"examples\">\n<ul>\n" ).arg( tr( "Examples" ) );
 

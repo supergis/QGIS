@@ -188,7 +188,7 @@ QgsSymbolV2* QgsCategorizedSymbolRendererV2::symbolForValue( const QVariant& val
   QHash<QString, QgsSymbolV2*>::iterator it = mSymbolHash.find( value.isNull() ? "" : value.toString() );
   if ( it == mSymbolHash.end() )
   {
-    if ( mSymbolHash.size() == 0 )
+    if ( mSymbolHash.isEmpty() )
     {
       QgsDebugMsg( "there are no hashed symbols!!!" );
     }
@@ -954,6 +954,16 @@ bool QgsCategorizedSymbolRendererV2::legendSymbolItemChecked( const QString& key
     return true;
 }
 
+void QgsCategorizedSymbolRendererV2::setLegendSymbolItem( const QString& key, QgsSymbolV2* symbol )
+{
+  bool ok;
+  int index = key.toInt( &ok );
+  if ( ok )
+    updateCategorySymbol( index, symbol );
+  else
+    delete symbol;
+}
+
 void QgsCategorizedSymbolRendererV2::checkLegendSymbolItem( const QString& key, bool state )
 {
   bool ok;
@@ -989,7 +999,7 @@ QgsCategorizedSymbolRendererV2* QgsCategorizedSymbolRendererV2::convertFromRende
   QgsCategorizedSymbolRendererV2* r = new QgsCategorizedSymbolRendererV2( "", QgsCategoryList() );
   QgsRenderContext context;
   QgsSymbolV2List symbols = const_cast<QgsFeatureRendererV2 *>( renderer )->symbols( context );
-  if ( symbols.size() > 0 )
+  if ( !symbols.isEmpty() )
   {
     r->setSourceSymbol( symbols.at( 0 )->clone() );
   }

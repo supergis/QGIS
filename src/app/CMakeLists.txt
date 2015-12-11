@@ -105,6 +105,8 @@ SET(QGIS_APP_SRCS
   qgsprojectproperties.cpp
   qgsrastercalcdialog.cpp
   qgsrasterlayerproperties.cpp
+  qgsrelationmanagerdialog.cpp
+  qgsrelationadddlg.cpp
   qgsstatisticalsummarydockwidget.cpp
   qgstextannotationdialog.cpp
   qgsshortcutsmanager.cpp
@@ -210,6 +212,7 @@ SET (QGIS_APP_MOC_HDRS
   qgslabeldialog.h
   qgslabelengineconfigdialog.h
   qgslabelinggui.h
+  qgslabelpreview.h
   qgslabelingwidget.h
   qgslabelpropertydialog.h
   qgsloadstylefromdbdialog.h
@@ -223,6 +226,7 @@ SET (QGIS_APP_MOC_HDRS
   qgswelcomepage.h
 
   qgsmaptooladdfeature.h
+  qgsmaptoolannotation.h
   qgsmaptoolcircularstringradius.h
   qgsmaptooladdpart.h
   qgsmaptooladdring.h
@@ -231,12 +235,15 @@ SET (QGIS_APP_MOC_HDRS
   qgsmaptooldeletepart.h
   qgsmaptooldeletering.h
   qgsmaptoolfeatureaction.h
+  qgsmaptoolformannotation.h
+  qgsmaptoolhtmlannotation.h
   qgsmaptoolpinlabels.h
   qgsmaptoolshowhidelabels.h
   qgsmaptoolidentifyaction.h
   qgsmaptoolmeasureangle.h
   qgsmaptoolmovefeature.h
   qgsmaptoolmovelabel.h
+  qgsmaptoollabel.h
   qgsmaptooloffsetcurve.h
   qgsmaptoolreshape.h
   qgsmaptoolrotatefeature.h
@@ -250,7 +257,10 @@ SET (QGIS_APP_MOC_HDRS
   qgsmaptoolsimplify.h
   qgsmaptoolsplitfeatures.h
   qgsmaptoolsplitparts.h
+  qgsmaptoolsvgannotation.h
+  qgsmaptooltextannotation.h
   qgsmaptooladdcircularstring.h
+  qgsmaptoolcircularstringcurvepoint.h
 
   nodetool/qgsmaptoolnodetool.h
   nodetool/qgsselectedfeature.h
@@ -264,6 +274,8 @@ SET (QGIS_APP_MOC_HDRS
   qgsprojectproperties.h
   qgsrastercalcdialog.h
   qgsrasterlayerproperties.h
+  qgsrelationmanagerdialog.h
+  qgsrelationadddlg.h
   qgssnappingdialog.h
   qgssponsors.h
   qgsstatisticalsummarydockwidget.h
@@ -285,6 +297,8 @@ SET (QGIS_APP_MOC_HDRS
   composer/qgscomposeritemwidget.h
   composer/qgscomposerlabelwidget.h
   composer/qgscomposerlegendwidget.h
+  composer/qgscomposerlegenditemdialog.h
+  composer/qgscomposerlegendlayersdialog.h
   composer/qgscomposermanager.h
   composer/qgscomposermapwidget.h
   composer/qgscomposerpicturewidget.h

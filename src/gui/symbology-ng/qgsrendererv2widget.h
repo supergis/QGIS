@@ -122,6 +122,7 @@ class QgsRendererV2DataDefinedMenus : public QObject
 
   public:
 
+    //! @deprecated will be removed in QGIS 3.0
     Q_DECL_DEPRECATED QgsRendererV2DataDefinedMenus( QMenu* menu, QgsVectorLayer* layer, const QString& rotationField, const QString& sizeScaleField, QgsSymbolV2::ScaleMethod scaleMethod );
     ~QgsRendererV2DataDefinedMenus();
 
@@ -214,7 +215,7 @@ class GUI_EXPORT QgsDataDefinedSizeDialog : public QgsDataDefinedValueDialog
         : QgsDataDefinedValueDialog( symbolList, layer, tr( "Size" ) )
     {
       init( tr( "Symbol size" ) );
-      if ( symbolList.length() && mLayer )
+      if ( !symbolList.isEmpty() && mLayer )
         mDDBtn->setAssistant( tr( "Size Assistant..." ), new QgsSizeScaleWidget( mLayer, static_cast<const QgsMarkerSymbolV2*>( symbolList[0] ) ) );
     }
 

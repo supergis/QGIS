@@ -87,7 +87,7 @@ void QgsMapToolCapture::validationFinished()
 {
   emit messageDiscarded();
   QString msgFinished = tr( "Validation finished" );
-  if ( mValidationWarnings.count() )
+  if ( !mValidationWarnings.isEmpty() )
   {
     emit messageEmitted( mValidationWarnings.join( "\n" ).append( "\n" ).append( msgFinished ), QgsMessageBar::WARNING );
   }
@@ -218,7 +218,7 @@ int QgsMapToolCapture::addVertex( const QgsPoint& point )
   }
   else
   {
-    mTempRubberBand->reset( mCaptureMode == CapturePolygon ? true : false );
+    mTempRubberBand->reset( mCaptureMode == CapturePolygon ? QGis::Polygon : QGis::Line );
   }
   if ( mCaptureMode == CaptureLine )
   {
@@ -308,7 +308,7 @@ void QgsMapToolCapture::undo()
     }
     else
     {
-      mTempRubberBand->reset( mCaptureMode == CapturePolygon ? true : false );
+      mTempRubberBand->reset( mCaptureMode == CapturePolygon ? QGis::Polygon : QGis::Line );
     }
 
     QgsVertexId vertexToRemove;

@@ -33,33 +33,6 @@
 // - fix Diverging children when first show Selections
 // - fix crash on Diverging?
 
-///@cond
-//not part of public API
-
-class TreeFilterProxyModel : public QSortFilterProxyModel
-{
-    //  Q_OBJECT
-
-  public:
-    TreeFilterProxyModel( QObject *parent, QgsCptCityBrowserModel* model )
-        : QSortFilterProxyModel( parent ), mModel( model )
-    { setSourceModel( mModel ); }
-
-  protected:
-    bool filterAcceptsRow( int sourceRow, const QModelIndex &sourceParent ) const override
-    {
-      QgsCptCityDataItem* item = mModel->dataItem( mModel->index( sourceRow, 0, sourceParent ) );
-      return ( item && !( item->type() == QgsCptCityDataItem::ColorRamp ) );
-    }
-    // bool lessThan(const QModelIndex &left, const QModelIndex &right) const;
-
-  private:
-    QgsCptCityBrowserModel* mModel;
-};
-
-///@endcond
-
-// ----------------------
 
 QgsCptCityColorRampV2Dialog::QgsCptCityColorRampV2Dialog( QgsCptCityColorRampV2* ramp, QWidget* parent )
     : QDialog( parent )
@@ -326,7 +299,7 @@ void QgsCptCityColorRampV2Dialog::on_mListWidget_itemClicked( QListWidgetItem * 
 
 void QgsCptCityColorRampV2Dialog::on_mListWidget_itemSelectionChanged()
 {
-  if ( mListWidget->selectedItems().count() == 0 )
+  if ( mListWidget->selectedItems().isEmpty() )
   {
     mRamp->setName( "", "" );
   }
@@ -714,3 +687,20 @@ void QgsCptCityColorRampV2Dialog::refreshModel( const QModelIndex& index )
   }
 }
 #endif
+
+///@cond
+
+TreeFilterProxyModel::TreeFilterProxyModel( QObject* parent, QgsCptCityBrowserModel* model )
+    : QSortFilterProxyModel( parent ), mModel( model )
+{
+  setSourceModel( mModel );
+}
+
+bool TreeFilterProxyModel::filterAcceptsRow( int sourceRow, const QModelIndex& sourceParent ) const
+{
+  QgsCptCityDataItem* item = mModel->dataItem( mModel->index( sourceRow, 0, sourceParent ) );
+  return ( item && !( item->type() == QgsCptCityDataItem::ColorRamp ) );
+}
+
+
+///@endcond

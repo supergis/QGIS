@@ -113,7 +113,9 @@ QgsFieldsProperties::QgsFieldsProperties( QgsVectorLayer *layer, QWidget* parent
   mRelationsList->setHorizontalHeaderItem( RelNameCol, new QTableWidgetItem( tr( "Name" ) ) );
   mRelationsList->setHorizontalHeaderItem( RelLayerCol, new QTableWidgetItem( tr( "Layer" ) ) );
   mRelationsList->setHorizontalHeaderItem( RelFieldCol, new QTableWidgetItem( tr( "Field" ) ) );
+  mRelationsList->setHorizontalHeaderItem( RelNmCol, new QTableWidgetItem( tr( "Cardinality" ) ) );
   mRelationsList->verticalHeader()->hide();
+  mRelationsList->horizontalHeader()->setStretchLastSection( true );
 
   // Init function stuff
   mInitCodeSourceComboBox->addItem( tr( "" ) );
@@ -144,7 +146,7 @@ void QgsFieldsProperties::init()
 void QgsFieldsProperties::onAttributeSelectionChanged()
 {
   bool isAddPossible = false;
-  if ( mDesignerTree->selectedItems().count() == 1 && mFieldsList->selectedItems().count() > 0 )
+  if ( mDesignerTree->selectedItems().count() == 1 && !mFieldsList->selectedItems().isEmpty() )
     if ( mDesignerTree->selectedItems()[0]->data( 0, DesignerTreeRole ).value<DesignerTreeItemData>().type() == DesignerTreeItemData::Container )
       isAddPossible = true;
   mAddItemButton->setEnabled( isAddPossible );
@@ -331,11 +333,11 @@ void QgsFieldsProperties::loadRelations()
 {
   mRelationsList->setRowCount( 0 );
 
-  QList<QgsRelation> relations = QgsProject::instance()->relationManager()->referencedRelations( mLayer );
+  mRelations = QgsProject::instance()->relationManager()->referencedRelations( mLayer );
 
   int idx = 0;
 
-  Q_FOREACH ( const QgsRelation& relation, relations )
+  Q_FOREACH ( const QgsRelation& relation, mRelations )
   {
     mRelationsList->insertRow( idx );
 
@@ -357,6 +359,29 @@ void QgsFieldsProperties::loadRelations()
     item->setFlags( Qt::ItemIsDragEnabled | Qt::ItemIsEnabled | Qt::ItemIsSelectable );
     mRelationsList->setItem( idx, RelIdCol, item );
 
+    QComboBox* nmCombo = new QComboBox( mRelationsList );
+    nmCombo->addItem( tr( "Many to one relation" ) );
+    Q_FOREACH ( const QgsRelation& nmrel, QgsProject::instance()->relationManager()->referencingRelations( relation.referencingLayer() ) )
+    {
+      if ( nmrel.fieldPairs().first().referencingField() != relation.fieldPairs().first().referencingField() )
+        nmCombo->addItem( QString( "%1 (%2)" ).arg( nmrel.referencedLayer()->name() ).arg( nmrel.fieldPairs().first().referencedField() ), nmrel.id() );
+
+      QgsEditorWidgetConfig cfg = mLayer->editFormConfig()->widgetConfig( relation.id() );
+
+      QVariant nmrelcfg = cfg.value( "nm-rel" );
+
+      int idx =  nmCombo->findData( nmrelcfg.toString() );
+
+      if ( idx != -1 )
+        nmCombo->setCurrentIndex( idx );
+    }
+
+    if ( nmCombo->count() == 1 )
+    {
+      nmCombo->setEnabled( false );
+    }
+
+    mRelationsList->setCellWidget( idx, RelNmCol, nmCombo );
     ++idx;
   }
 }
@@ -366,7 +391,7 @@ void QgsFieldsProperties::on_mAddItemButton_clicked()
   QList<QTableWidgetItem*> listItems = mFieldsList->selectedItems();
   QList<QTreeWidgetItem*> treeItems = mDesignerTree->selectedItems();
 
-  if ( treeItems.count() != 1 && listItems.count() == 0 )
+  if ( treeItems.count() != 1 && listItems.isEmpty() )
     return;
 
   QTreeWidgetItem *parent = treeItems[0];
@@ -630,10 +655,10 @@ void QgsFieldsProperties::on_mDeleteAttributeButton_clicked()
     }
   }
 
-  if ( expressionFields.count() )
+  if ( !expressionFields.isEmpty() )
     mLayer->deleteAttributes( expressionFields.toList() );
 
-  if ( providerFields.count() )
+  if ( !providerFields.isEmpty() )
   {
     mLayer->beginEditCommand( tr( "Deleted attributes" ) );
     if ( mLayer->deleteAttributes( providerFields.toList() ) )
@@ -661,7 +686,7 @@ void QgsFieldsProperties::updateButtons()
     mAddAttributeButton->setEnabled( false );
 
     // Enable delete button if items are selected
-    mDeleteAttributeButton->setEnabled( mFieldsList->selectedItems().count() > 0 );
+    mDeleteAttributeButton->setEnabled( !mFieldsList->selectedItems().isEmpty() );
 
     // and only if all selected items have their origin in an expression
     Q_FOREACH ( QTableWidgetItem* item, mFieldsList->selectedItems() )
@@ -894,7 +919,9 @@ void QgsFieldsProperties::apply()
     }
   }
 
-  //tabs and groups
+
+
+  // tabs and groups
   mLayer->clearAttributeEditorWidgets();
   for ( int t = 0; t < mDesignerTree->invisibleRootItem()->childCount(); t++ )
   {
@@ -917,8 +944,27 @@ void QgsFieldsProperties::apply()
 
   mLayer->setExcludeAttributesWMS( excludeAttributesWMS );
   mLayer->setExcludeAttributesWFS( excludeAttributesWFS );
-}
 
+  // relations
+  for ( int i = 0; i < mRelationsList->rowCount(); ++i )
+  {
+    QgsEditorWidgetConfig cfg;
+
+    QComboBox* cb = qobject_cast<QComboBox*>( mRelationsList->cellWidget( i, RelNmCol ) );
+    QVariant otherRelation = cb->itemData( cb->currentIndex() );
+
+    if ( otherRelation.isValid() )
+    {
+      cfg["nm-rel"] = otherRelation.toString();
+    }
+
+    DesignerTreeItemData itemData = mRelationsList->item( i, RelNameCol )->data( DesignerTreeRole ).value<DesignerTreeItemData>();
+
+    QString relationName = itemData.name();
+
+    mLayer->editFormConfig()->setWidgetConfig( relationName, cfg );
+  }
+}
 /*
  * FieldConfig implementation
  */
@@ -947,12 +993,12 @@ QgsFieldsProperties::FieldConfig::FieldConfig( QgsVectorLayer* layer, int idx )
  * DragList implementation
  */
 
-QStringList QgsFieldsProperties::DragList::mimeTypes() const
+QStringList DragList::mimeTypes() const
 {
   return QStringList() << QLatin1String( "application/x-qgsattributetabledesignerelement" );
 }
 
-QMimeData* QgsFieldsProperties::DragList::mimeData( const QList<QTableWidgetItem*> items ) const
+QMimeData* DragList::mimeData( const QList<QTableWidgetItem*> items ) const
 {
   if ( items.count() <= 0 )
     return 0;
@@ -972,7 +1018,7 @@ QMimeData* QgsFieldsProperties::DragList::mimeData( const QList<QTableWidgetItem
     // Relevant information is always in the UserRole of the first column
     if ( item && item->column() == 0 )
     {
-      DesignerTreeItemData itemData = item->data( DesignerTreeRole ).value<DesignerTreeItemData>();
+      QgsFieldsProperties::DesignerTreeItemData itemData = item->data( QgsFieldsProperties::DesignerTreeRole ).value<QgsFieldsProperties::DesignerTreeItemData>();
       stream << itemData;
     }
   }
@@ -986,22 +1032,22 @@ QMimeData* QgsFieldsProperties::DragList::mimeData( const QList<QTableWidgetItem
  * DesignerTree implementation
  */
 
-QTreeWidgetItem* QgsFieldsProperties::DesignerTree::addContainer( QTreeWidgetItem* parent, const QString& title )
+QTreeWidgetItem* DesignerTree::addContainer( QTreeWidgetItem* parent, const QString& title )
 {
   QTreeWidgetItem *newItem = new QTreeWidgetItem( QStringList() << title );
   newItem->setBackground( 0, QBrush( Qt::lightGray ) );
   newItem->setFlags( Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled );
-  newItem->setData( 0, DesignerTreeRole, DesignerTreeItemData( DesignerTreeItemData::Container, title ).asQVariant() );
+  newItem->setData( 0, QgsFieldsProperties::DesignerTreeRole, QgsFieldsProperties::DesignerTreeItemData( QgsFieldsProperties::DesignerTreeItemData::Container, title ).asQVariant() );
   parent->addChild( newItem );
   newItem->setExpanded( true );
   return newItem;
 }
 
-QTreeWidgetItem* QgsFieldsProperties::DesignerTree::addItem( QTreeWidgetItem* parent, DesignerTreeItemData data )
+QTreeWidgetItem* DesignerTree::addItem( QTreeWidgetItem* parent, QgsFieldsProperties::DesignerTreeItemData data )
 {
   QTreeWidgetItem* newItem = new QTreeWidgetItem( QStringList() << data.name() );
   newItem->setFlags( Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled );
-  if ( data.type() == DesignerTreeItemData::Container )
+  if ( data.type() == QgsFieldsProperties::DesignerTreeItemData::Container )
   {
     newItem->setFlags( Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled );
     newItem->setBackground( 0, QBrush( Qt::lightGray ) );
@@ -1023,7 +1069,7 @@ QTreeWidgetItem* QgsFieldsProperties::DesignerTree::addItem( QTreeWidgetItem* pa
     }
 #endif
   }
-  newItem->setData( 0, DesignerTreeRole, data.asQVariant() );
+  newItem->setData( 0, QgsFieldsProperties::DesignerTreeRole, data.asQVariant() );
   parent->addChild( newItem );
 
   return newItem;
@@ -1034,21 +1080,21 @@ QTreeWidgetItem* QgsFieldsProperties::DesignerTree::addItem( QTreeWidgetItem* pa
  * drop event. Used to inhibit dropping fields onto the root item.
  */
 
-void QgsFieldsProperties::DesignerTree::dragMoveEvent( QDragMoveEvent *event )
+void DesignerTree::dragMoveEvent( QDragMoveEvent *event )
 {
   QTreeWidgetItem* targetItem = itemAt( event->pos() );
   const QMimeData* data = event->mimeData();
 
   if ( data->hasFormat( "application/x-qgsattributetabledesignerelement" ) )
   {
-    DesignerTreeItemData itemElement;
+    QgsFieldsProperties::DesignerTreeItemData itemElement;
 
     QByteArray itemData = data->data( "application/x-qgsattributetabledesignerelement" );
     QDataStream stream( &itemData, QIODevice::ReadOnly );
     stream >> itemElement;
 
     // Forbid dropping fields on root item
-    if ( itemElement.type() == DesignerTreeItemData::Field && !targetItem )
+    if ( itemElement.type() == QgsFieldsProperties::DesignerTreeItemData::Field && !targetItem )
     {
       event->ignore();
       return;
@@ -1069,7 +1115,7 @@ void QgsFieldsProperties::DesignerTree::dragMoveEvent( QDragMoveEvent *event )
 }
 
 
-bool QgsFieldsProperties::DesignerTree::dropMimeData( QTreeWidgetItem* parent, int index, const QMimeData * data, Qt::DropAction action )
+bool DesignerTree::dropMimeData( QTreeWidgetItem* parent, int index, const QMimeData * data, Qt::DropAction action )
 {
   Q_UNUSED( index )
   bool bDropSuccessful = false;
@@ -1082,7 +1128,7 @@ bool QgsFieldsProperties::DesignerTree::dropMimeData( QTreeWidgetItem* parent, i
   {
     QByteArray itemData = data->data( "application/x-qgsattributetabledesignerelement" );
     QDataStream stream( &itemData, QIODevice::ReadOnly );
-    DesignerTreeItemData itemElement;
+    QgsFieldsProperties::DesignerTreeItemData itemElement;
 
     while ( !stream.atEnd() )
     {
@@ -1104,7 +1150,7 @@ bool QgsFieldsProperties::DesignerTree::dropMimeData( QTreeWidgetItem* parent, i
   return bDropSuccessful;
 }
 
-void QgsFieldsProperties::DesignerTree::dropEvent( QDropEvent* event )
+void DesignerTree::dropEvent( QDropEvent* event )
 {
   if ( !event->mimeData()->hasFormat( "application/x-qgsattributetabledesignerelement" ) )
     return;
@@ -1117,12 +1163,12 @@ void QgsFieldsProperties::DesignerTree::dropEvent( QDropEvent* event )
   QTreeWidget::dropEvent( event );
 }
 
-QStringList QgsFieldsProperties::DesignerTree::mimeTypes() const
+QStringList DesignerTree::mimeTypes() const
 {
   return QStringList() << QLatin1String( "application/x-qgsattributetabledesignerelement" );
 }
 
-QMimeData* QgsFieldsProperties::DesignerTree::mimeData( const QList<QTreeWidgetItem*> items ) const
+QMimeData* DesignerTree::mimeData( const QList<QTreeWidgetItem*> items ) const
 {
   if ( items.count() <= 0 )
     return 0;
@@ -1142,7 +1188,7 @@ QMimeData* QgsFieldsProperties::DesignerTree::mimeData( const QList<QTreeWidgetI
     if ( item )
     {
       // Relevant information is always in the DesignerTreeRole of the first column
-      DesignerTreeItemData itemData = item->data( 0, DesignerTreeRole ).value<DesignerTreeItemData>();
+      QgsFieldsProperties::DesignerTreeItemData itemData = item->data( 0, QgsFieldsProperties::DesignerTreeRole ).value<QgsFieldsProperties::DesignerTreeItemData>();
       stream << itemData;
     }
   }

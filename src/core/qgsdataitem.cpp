@@ -408,7 +408,7 @@ void QgsDataItem::childrenCreated()
     return;
   }
 
-  if ( mChildren.size() == 0 ) // usually populating but may also be refresh if originaly there were no children
+  if ( mChildren.isEmpty() ) // usually populating but may also be refresh if originaly there were no children
   {
     populate( mFutureWatcher->result() );
   }
@@ -520,7 +520,7 @@ int QgsDataItem::rowCount()
 }
 bool QgsDataItem::hasChildren()
 {
-  return ( state() == Populated ? mChildren.count() > 0 : true );
+  return ( state() == Populated ? !mChildren.isEmpty() : true );
 }
 
 void QgsDataItem::setParent( QgsDataItem* parent )
@@ -787,10 +787,14 @@ QVector<QgsDataItem*> QgsDirectoryItem::createChildren()
       deleteLater( children );
       return children;
     }
+
     QString subdirPath = dir.absoluteFilePath( subdir );
+
     QgsDebugMsgLevel( QString( "creating subdir: %1" ).arg( subdirPath ), 2 );
 
     QString path = mPath + '/' + subdir; // may differ from subdirPath
+    if ( QgsDirectoryItem::hiddenPath( path ) )
+      continue;
     QgsDirectoryItem *item = new QgsDirectoryItem( this, subdir, subdirPath, path );
     // propagate signals up to top
 
@@ -878,6 +882,15 @@ void QgsDirectoryItem::directoryChanged()
   {
     refresh();
   }
+}
+
+bool QgsDirectoryItem::hiddenPath( QString path )
+{
+  QSettings settings;
+  QStringList hiddenItems = settings.value( "/browser/hiddenPaths",
+                            QStringList() ).toStringList();
+  int idx = hiddenItems.indexOf( path );
+  return ( idx > -1 );
 }
 
 void QgsDirectoryItem::childrenCreated()
@@ -1158,7 +1171,7 @@ void QgsZipItem::init()
   mIconName = "/mIconZip.png";
   mVsiPrefix = vsiPrefix( mFilePath );
 
-  if ( mProviderNames.size() == 0 )
+  if ( mProviderNames.isEmpty() )
   {
     // QStringList keys = QgsProviderRegistry::instance()->providerList();
     // only use GDAL and OGR providers as we use the VSIFILE mechanism
@@ -1396,7 +1409,7 @@ QgsDataItem* QgsZipItem::itemFromPath( QgsDataItem* parent, const QString& fileP
       zipFileList = zipItem->getZipFileList();
     }
     // force populate if less than 10 items
-    if ( zipFileList.count() > 0 && zipFileList.count() <= 10 )
+    if ( !zipFileList.isEmpty() && zipFileList.count() <= 10 )
     {
       zipItem->populate( zipItem->createChildren() );
       populated = true; // there is no QgsDataItem::isPopulated() function

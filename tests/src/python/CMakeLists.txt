@@ -1,4 +1,5 @@
 SET (ENABLE_PGTEST FALSE CACHE BOOL "Enable PostgreSQL provider tests")
+SET (ENABLE_MSSQLTEST FALSE CACHE BOOL "Enable MsSQL provider tests")
 
 INCLUDE(UsePythonTest)
 # Run one of the two server tests at the beginning so they don't run in
@@ -36,6 +37,7 @@ ADD_PYTHON_TEST(PyQgsFeatureIterator test_qgsfeatureiterator.py)
 ADD_PYTHON_TEST(PyQgsField test_qgsfield.py)
 ADD_PYTHON_TEST(PyQgsFontUtils test_qgsfontutils.py)
 ADD_PYTHON_TEST(PyQgsGeometryAvoidIntersections test_qgsgeometry_avoid_intersections.py)
+ADD_PYTHON_TEST(PyQgsGeometryGeneratorSymbolLayerV2 test_qgsgeometrygeneratorsymbollayerv2.py)
 ADD_PYTHON_TEST(PyQgsGeometryTest test_qgsgeometry.py)
 ADD_PYTHON_TEST(PyQgsGraduatedSymbolRendererV2 test_qgsgraduatedsymbolrendererv2.py)
 ADD_PYTHON_TEST(PyQgsMapUnitScale test_qgsmapunitscale.py)
@@ -79,7 +81,12 @@ ENDIF (WITH_DESKTOP)
 
 IF (ENABLE_PGTEST)
   ADD_PYTHON_TEST(PyQgsPostgresProvider test_provider_postgres.py)
+  ADD_PYTHON_TEST(PyQgsRelationEditWidget test_qgsrelationeditwidget.py)
 ENDIF (ENABLE_PGTEST)
+
+IF (ENABLE_MSSQLTEST)
+  ADD_PYTHON_TEST(PyQgsMssqlProvider test_provider_mssql.py)
+ENDIF (ENABLE_MSSQLTEST)
 
 IF (WITH_APIDOC)
   ADD_PYTHON_TEST(PyQgsDocCoverage test_qgsdoccoverage.py)

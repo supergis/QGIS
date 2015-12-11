@@ -1,9 +1,9 @@
 /***************************************************************************
-     main.cpp
+    qgsrelationwidgetwrapper.h
      --------------------------------------
-    Date                 : Sun Sep 16 12:12:52 AKDT 2007
-    Copyright            : (C) 2007 by Gary E. Sherman
-    Email                : sherman at mrcc dot com
+    Date                 : 14.5.2014
+    Copyright            : (C) 2014 Matthias Kuhn
+    Email                : matthias at opengis dot ch
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -12,21 +12,22 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include <qapplication.h>
-#include "qgsspit.h"
 
-int main( int argc, char ** argv )
+
+class QgsRelationWidgetWrapper : QgsWidgetWrapper
 {
-  QApplication a( argc, argv );
-  // Set up the QSettings environment must be done after qapp is created
-  QCoreApplication::setOrganizationName( "QGIS" );
-  QCoreApplication::setOrganizationDomain( "qgis.org" );
-  QCoreApplication::setApplicationName( "QGIS2" );
+%TypeHeaderCode
+#include <qgsrelationwidgetwrapper.h>
+%End
 
-  QgsSpit w( 0, Qt::Window );
-  w.show();
+  public:
+    explicit QgsRelationWidgetWrapper( QgsVectorLayer* vl, const QgsRelation& relation, QWidget* editor = 0, QWidget* parent /TransferThis/ = 0 );
 
-  a.connect( &a, SIGNAL( lastWindowClosed() ), &a, SLOT( quit() ) );
+  protected:
+    QWidget* createWidget( QWidget* parent );
+    void initWidget( QWidget* editor );
+    bool valid() const;
 
-  return a.exec();
-}
+  public slots:
+    void setFeature( const QgsFeature& feature );
+};

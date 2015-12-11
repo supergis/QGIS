@@ -237,29 +237,65 @@ void QgsSvgCache::containsParams( const QString& path, bool& hasFillParam, QColo
                                   bool& hasOutlineWidthParam, double& defaultOutlineWidth ) const
 {
   bool hasDefaultFillColor = false;
+  bool hasFillOpacityParam = false;
+  bool hasDefaultFillOpacity = false;
+  double defaultFillOpacity = 1.0;
   bool hasDefaultOutlineColor = false;
   bool hasDefaultOutlineWidth = false;
+  bool hasOutlineOpacityParam = false;
+  bool hasDefaultOutlineOpacity = false;
+  double defaultOutlineOpacity = 1.0;
 
   containsParams( path, hasFillParam, hasDefaultFillColor, defaultFillColor,
+                  hasFillOpacityParam, hasDefaultFillOpacity, defaultFillOpacity,
                   hasOutlineParam, hasDefaultOutlineColor, defaultOutlineColor,
-                  hasOutlineWidthParam, hasDefaultOutlineWidth, defaultOutlineWidth );
+                  hasOutlineWidthParam, hasDefaultOutlineWidth, defaultOutlineWidth,
+                  hasOutlineOpacityParam, hasDefaultOutlineOpacity, defaultOutlineOpacity );
 }
+
 
 void QgsSvgCache::containsParams( const QString& path,
                                   bool& hasFillParam, bool& hasDefaultFillParam, QColor& defaultFillColor,
                                   bool& hasOutlineParam, bool& hasDefaultOutlineColor, QColor& defaultOutlineColor,
                                   bool& hasOutlineWidthParam, bool& hasDefaultOutlineWidth, double& defaultOutlineWidth ) const
 {
+  bool hasFillOpacityParam = false;
+  bool hasDefaultFillOpacity = false;
+  double defaultFillOpacity = 1.0;
+  bool hasOutlineOpacityParam = false;
+  bool hasDefaultOutlineOpacity = false;
+  double defaultOutlineOpacity = 1.0;
+
+  containsParams( path, hasFillParam, hasDefaultFillParam, defaultFillColor,
+                  hasFillOpacityParam, hasDefaultFillOpacity, defaultFillOpacity,
+                  hasOutlineParam, hasDefaultOutlineColor, defaultOutlineColor,
+                  hasOutlineWidthParam, hasDefaultOutlineWidth, defaultOutlineWidth,
+                  hasOutlineOpacityParam, hasDefaultOutlineOpacity, defaultOutlineOpacity );
+}
+
+void QgsSvgCache::containsParams( const QString& path,
+                                  bool& hasFillParam, bool& hasDefaultFillParam, QColor& defaultFillColor,
+                                  bool& hasFillOpacityParam, bool& hasDefaultFillOpacity, double& defaultFillOpacity,
+                                  bool& hasOutlineParam, bool& hasDefaultOutlineColor, QColor& defaultOutlineColor,
+                                  bool& hasOutlineWidthParam, bool& hasDefaultOutlineWidth, double& defaultOutlineWidth,
+                                  bool& hasOutlineOpacityParam, bool& hasDefaultOutlineOpacity, double& defaultOutlineOpacity ) const
+{
   hasFillParam = false;
+  hasFillOpacityParam = false;
   hasOutlineParam = false;
   hasOutlineWidthParam = false;
+  hasOutlineOpacityParam = false;
   defaultFillColor = QColor( Qt::white );
+  defaultFillOpacity = 1.0;
   defaultOutlineColor = QColor( Qt::black );
   defaultOutlineWidth = 0.2;
+  defaultOutlineOpacity = 1.0;
 
   hasDefaultFillParam = false;
+  hasDefaultFillOpacity = false;
   hasDefaultOutlineColor = false;
   hasDefaultOutlineWidth = false;
+  hasDefaultOutlineOpacity = false;
 
   QDomDocument svgDoc;
   if ( !svgDoc.setContent( getImageData( path ) ) )
@@ -269,8 +305,10 @@ void QgsSvgCache::containsParams( const QString& path,
 
   QDomElement docElem = svgDoc.documentElement();
   containsElemParams( docElem, hasFillParam, hasDefaultFillParam, defaultFillColor,
+                      hasFillOpacityParam, hasDefaultFillOpacity, defaultFillOpacity,
                       hasOutlineParam, hasDefaultOutlineColor, defaultOutlineColor,
-                      hasOutlineWidthParam, hasDefaultOutlineWidth, defaultOutlineWidth );
+                      hasOutlineWidthParam, hasDefaultOutlineWidth, defaultOutlineWidth,
+                      hasOutlineOpacityParam, hasDefaultOutlineOpacity, defaultOutlineOpacity );
 }
 
 void QgsSvgCache::replaceParamsAndCacheSvg( QgsSvgCacheEntry* entry )
@@ -620,13 +658,21 @@ void QgsSvgCache::replaceElemParams( QDomElement& elem, const QColor& fill, cons
         }
         QString key = keyValueSplit.at( 0 );
         QString value = keyValueSplit.at( 1 );
-        if ( value.startsWith( "param(fill" ) )
+        if ( value.startsWith( "param(fill)" ) )
         {
           value = fill.name();
+        }
+        else if ( value.startsWith( "param(fill-opacity)" ) )
+        {
+          value = fill.alphaF();
         }
         else if ( value.startsWith( "param(outline)" ) )
         {
           value = outline.name();
+        }
+        else if ( value.startsWith( "param(outline-opacity)" ) )
+        {
+          value = outline.alphaF();
         }
         else if ( value.startsWith( "param(outline-width)" ) )
         {
@@ -648,9 +694,17 @@ void QgsSvgCache::replaceElemParams( QDomElement& elem, const QColor& fill, cons
       {
         elem.setAttribute( attribute.name(), fill.name() );
       }
+      else if ( value.startsWith( "param(fill-opacity)" ) )
+      {
+        elem.setAttribute( attribute.name(), fill.alphaF() );
+      }
       else if ( value.startsWith( "param(outline)" ) )
       {
         elem.setAttribute( attribute.name(), outline.name() );
+      }
+      else if ( value.startsWith( "param(outline-opacity)" ) )
+      {
+        elem.setAttribute( attribute.name(), outline.alphaF() );
       }
       else if ( value.startsWith( "param(outline-width)" ) )
       {
@@ -668,8 +722,11 @@ void QgsSvgCache::replaceElemParams( QDomElement& elem, const QColor& fill, cons
   }
 }
 
-void QgsSvgCache::containsElemParams( const QDomElement& elem, bool& hasFillParam, bool& hasDefaultFill, QColor& defaultFill, bool& hasOutlineParam, bool& hasDefaultOutline, QColor& defaultOutline,
-                                      bool& hasOutlineWidthParam, bool& hasDefaultOutlineWidth, double& defaultOutlineWidth ) const
+void QgsSvgCache::containsElemParams( const QDomElement& elem, bool& hasFillParam, bool& hasDefaultFill, QColor& defaultFill,
+                                      bool& hasFillOpacityParam, bool& hasDefaultFillOpacity, double& defaultFillOpacity,
+                                      bool& hasOutlineParam, bool& hasDefaultOutline, QColor& defaultOutline,
+                                      bool& hasOutlineWidthParam, bool& hasDefaultOutlineWidth, double& defaultOutlineWidth,
+                                      bool& hasOutlineOpacityParam, bool& hasDefaultOutlineOpacity, double& defaultOutlineOpacity ) const
 {
   if ( elem.isNull() )
   {
@@ -677,7 +734,7 @@ void QgsSvgCache::containsElemParams( const QDomElement& elem, bool& hasFillPara
   }
 
   //we already have all the information, no need to go deeper
-  if ( hasFillParam && hasOutlineParam && hasOutlineWidthParam )
+  if ( hasFillParam && hasOutlineParam && hasOutlineWidthParam && hasFillOpacityParam && hasOutlineOpacityParam )
   {
     return;
   }
@@ -714,6 +771,20 @@ void QgsSvgCache::containsElemParams( const QDomElement& elem, bool& hasFillPara
             hasDefaultFill = true;
           }
         }
+        else if ( !hasFillOpacityParam && value.startsWith( "param(fill-opacity)" ) )
+        {
+          hasFillOpacityParam = true;
+          if ( valueSplit.size() > 1 )
+          {
+            bool ok;
+            double opacity = valueSplit.at( 1 ).toDouble( &ok );
+            if ( ok )
+            {
+              defaultFillOpacity = opacity;
+              hasDefaultFillOpacity = true;
+            }
+          }
+        }
         else if ( !hasOutlineParam && value.startsWith( "param(outline)" ) )
         {
           hasOutlineParam = true;
@@ -732,6 +803,20 @@ void QgsSvgCache::containsElemParams( const QDomElement& elem, bool& hasFillPara
             hasDefaultOutlineWidth = true;
           }
         }
+        else if ( !hasOutlineOpacityParam && value.startsWith( "param(outline-opacity)" ) )
+        {
+          hasOutlineOpacityParam = true;
+          if ( valueSplit.size() > 1 )
+          {
+            bool ok;
+            double opacity = valueSplit.at( 1 ).toDouble( &ok );
+            if ( ok )
+            {
+              defaultOutlineOpacity = opacity;
+              hasDefaultOutlineOpacity = true;
+            }
+          }
+        }
       }
     }
     else
@@ -745,6 +830,20 @@ void QgsSvgCache::containsElemParams( const QDomElement& elem, bool& hasFillPara
         {
           defaultFill = QColor( valueSplit.at( 1 ) );
           hasDefaultFill = true;
+        }
+      }
+      else if ( !hasFillOpacityParam && value.startsWith( "param(fill-opacity)" ) )
+      {
+        hasFillOpacityParam = true;
+        if ( valueSplit.size() > 1 )
+        {
+          bool ok;
+          double opacity = valueSplit.at( 1 ).toDouble( &ok );
+          if ( ok )
+          {
+            defaultFillOpacity = opacity;
+            hasDefaultFillOpacity = true;
+          }
         }
       }
       else if ( !hasOutlineParam && value.startsWith( "param(outline)" ) )
@@ -765,6 +864,20 @@ void QgsSvgCache::containsElemParams( const QDomElement& elem, bool& hasFillPara
           hasDefaultOutlineWidth = true;
         }
       }
+      else if ( !hasOutlineOpacityParam && value.startsWith( "param(outline-opacity)" ) )
+      {
+        hasOutlineOpacityParam = true;
+        if ( valueSplit.size() > 1 )
+        {
+          bool ok;
+          double opacity = valueSplit.at( 1 ).toDouble( &ok );
+          if ( ok )
+          {
+            defaultOutlineOpacity = opacity;
+            hasDefaultOutlineOpacity = true;
+          }
+        }
+      }
     }
   }
 
@@ -775,8 +888,10 @@ void QgsSvgCache::containsElemParams( const QDomElement& elem, bool& hasFillPara
   {
     QDomElement childElem = childList.at( i ).toElement();
     containsElemParams( childElem, hasFillParam, hasDefaultFill, defaultFill,
+                        hasFillOpacityParam, hasDefaultFillOpacity, defaultFillOpacity,
                         hasOutlineParam, hasDefaultOutline, defaultOutline,
-                        hasOutlineWidthParam, hasDefaultOutlineWidth, defaultOutlineWidth );
+                        hasOutlineWidthParam, hasDefaultOutlineWidth, defaultOutlineWidth,
+                        hasOutlineOpacityParam, hasDefaultOutlineOpacity, defaultOutlineOpacity );
   }
 }
 

@@ -40,6 +40,7 @@ SET(QGIS_CORE_SRCS
   symbology-ng/qgspointdisplacementrenderer.cpp
   symbology-ng/qgsvectorfieldsymbollayer.cpp
   symbology-ng/qgscolorbrewerpalette.cpp
+  symbology-ng/qgsgeometrygeneratorsymbollayerv2.cpp
 
   diagram/qgsdiagram.cpp
   diagram/qgspiediagram.cpp
@@ -404,6 +405,7 @@ SET(QGIS_CORE_MOC_HDRS
   qgscredentials.h
   qgsdataitem.h
   qgsdataprovider.h
+  qgsdbfilterproxymodel.h
   qgseditformconfig.h
   qgsgeometryvalidator.h
   qgsgml.h
@@ -424,6 +426,7 @@ SET(QGIS_CORE_MOC_HDRS
   qgsnetworkcontentfetcher.h
   qgsnetworkreplyparser.h
   qgsofflineediting.h
+  qgsowsconnection.h
   qgspluginlayer.h
   qgspointlocator.h
   qgsproject.h
@@ -445,6 +448,7 @@ SET(QGIS_CORE_MOC_HDRS
 
   composer/qgsaddremoveitemcommand.h
   composer/qgsatlascomposition.h
+  composer/qgscomposerarrow.h
   composer/qgscomposerattributetable.h
   composer/qgscomposerattributetablemodel.h
   composer/qgscomposerattributetablemodelv2.h
@@ -473,6 +477,7 @@ SET(QGIS_CORE_MOC_HDRS
   composer/qgscomposertexttable.h
   composer/qgscomposition.h
   composer/qgslegendmodel.h
+  composer/qgspaperitem.h
 
   raster/qgsrasterlayer.h
   raster/qgsrasterdataprovider.h
@@ -751,6 +756,7 @@ SET(QGIS_CORE_HDRS
   symbology-ng/qgssymbolv2.h
   symbology-ng/qgsvectorcolorrampv2.h
   symbology-ng/qgsvectorfieldsymbollayer.h
+  symbology-ng/qgsgeometrygeneratorsymbollayerv2.h
 
   layertree/qgslayertree.h
   layertree/qgslayertreeutils.h

@@ -279,6 +279,9 @@ void QgsOgrFeatureIterator::getFeatureAttribute( OGRFeatureH ogrFet, QgsFeature 
     {
       case QVariant::String: value = QVariant( mSource->mEncoding->toUnicode( OGR_F_GetFieldAsString( ogrFet, attindex ) ) ); break;
       case QVariant::Int: value = QVariant( OGR_F_GetFieldAsInteger( ogrFet, attindex ) ); break;
+#if defined(GDAL_VERSION_NUM) && GDAL_VERSION_NUM >= 2000000
+      case QVariant::LongLong: value = QVariant( OGR_F_GetFieldAsInteger64( ogrFet, attindex ) ); break;
+#endif
       case QVariant::Double: value = QVariant( OGR_F_GetFieldAsDouble( ogrFet, attindex ) ); break;
       case QVariant::Date:
       case QVariant::DateTime:
@@ -328,7 +331,16 @@ bool QgsOgrFeatureIterator::readFeature( OGRFeatureH fet, QgsFeature& feature )
       OGR_G_ExportToWkb( geom, ( OGRwkbByteOrder ) QgsApplication::endian(), wkb );
 
       QgsGeometry* geometry = feature.geometry();
-      if ( !geometry ) feature.setGeometryAndOwnership( wkb, memorySize ); else geometry->fromWkb( wkb, memorySize );
+      if ( !geometry )
+      {
+        QgsGeometry *g = new QgsGeometry();
+        g->fromWkb( wkb, memorySize );
+        feature.setGeometry( g );
+      }
+      else
+      {
+        geometry->fromWkb( wkb, memorySize );
+      }
     }
     else
       feature.setGeometry( 0 );

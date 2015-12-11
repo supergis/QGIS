@@ -38,6 +38,7 @@ CREATE TABLE qgis_test."someData" (
     cnt integer,
     name text DEFAULT 'qgis',
     name2 text DEFAULT 'qgis',
+    num_char text,
     geom public.geometry(Point,4326)
 );
 
@@ -48,12 +49,12 @@ CREATE TABLE qgis_test."someData" (
 -- Data for Name: someData; Type: TABLE DATA; Schema: qgis_test; Owner: postgres
 --
 
-INSERT INTO qgis_test."someData" (pk, cnt, name, name2, geom) VALUES
-(5, -200, NULL, 'NuLl', '0101000020E61000001D5A643BDFC751C01F85EB51B88E5340'),
-(3,  300, 'Pear', 'PEaR', NULL),
-(1,  100, 'Orange', 'oranGe', '0101000020E61000006891ED7C3F9551C085EB51B81E955040'),
-(2,  200, 'Apple', 'Apple', '0101000020E6100000CDCCCCCCCC0C51C03333333333B35140'),
-(4,  400, 'Honey', 'Honey', '0101000020E610000014AE47E17A5450C03333333333935340')
+INSERT INTO qgis_test."someData" (pk, cnt, name, name2, num_char, geom) VALUES
+(5, -200, NULL, 'NuLl', '5', '0101000020E61000001D5A643BDFC751C01F85EB51B88E5340'),
+(3,  300, 'Pear', 'PEaR', '3', NULL),
+(1,  100, 'Orange', 'oranGe', '1', '0101000020E61000006891ED7C3F9551C085EB51B81E955040'),
+(2,  200, 'Apple', 'Apple', '2', '0101000020E6100000CDCCCCCCCC0C51C03333333333B35140'),
+(4,  400, 'Honey', 'Honey', '4', '0101000020E610000014AE47E17A5450C03333333333935340')
 ;
 
 
@@ -188,3 +189,104 @@ CREATE TABLE qgis_test.mls3d(
 );
 
 INSERT INTO qgis_test.mls3d values (1, 'srid=4326;MultiLineString((0 0 0, 1 1 1),(2 2 2, 3 3 3))'::geometry);
+
+
+-----------------------------------------
+-- Test tables with INHERITS
+--
+-- This is bad design: the common fields
+-- are replicated in child tables and
+-- leads to duplicated ids in the parent
+-- table
+--
+
+
+CREATE TABLE qgis_test.base_table_bad
+(
+  gid serial NOT NULL,
+  geom geometry(Point,4326),
+  code character varying,
+  CONSTRAINT base_bad_pkey PRIMARY KEY (gid)
+)
+WITH (
+  OIDS=FALSE
+);
+
+CREATE TABLE qgis_test.child_table_bad
+(
+  gid serial NOT NULL,
+  geom geometry(Point,4326),
+  code character varying,
+  CONSTRAINT child_bad_pkey PRIMARY KEY (gid)
+)
+INHERITS ( qgis_test.base_table_bad)
+WITH (
+  OIDS=FALSE
+);
+
+
+CREATE TABLE qgis_test.child_table2_bad
+(
+  gid serial NOT NULL,
+  geom geometry(Point,4326),
+  code character varying,
+  CONSTRAINT child2_bad_pkey PRIMARY KEY (gid)
+)
+INHERITS ( qgis_test.base_table_bad)
+WITH (
+  OIDS=FALSE
+);
+
+INSERT INTO qgis_test.child_table_bad (geom, code) VALUES ('srid=4326;Point(0 0)'::geometry, 'child 1');
+INSERT INTO qgis_test.child_table_bad (geom, code) VALUES ('srid=4326;Point(1 1)'::geometry, 'child 2');
+
+
+INSERT INTO qgis_test.child_table2_bad (geom, code) VALUES ('srid=4326;Point(-1 -1)'::geometry, 'child2 1');
+INSERT INTO qgis_test.child_table2_bad (geom, code) VALUES ('srid=4326;Point(-1 1)'::geometry, 'child2 2');
+
+
+
+-----------------------------------------
+-- Test tables with INHERITS
+--
+-- This is good design: the common fields
+-- and the pk are only in the parent table
+-- no pk duplication
+
+
+CREATE TABLE qgis_test.base_table_good
+(
+  gid serial NOT NULL,
+  geom geometry(Point,4326),
+  CONSTRAINT base_good_pkey PRIMARY KEY (gid)
+)
+WITH (
+  OIDS=FALSE
+);
+
+CREATE TABLE qgis_test.child_table_good
+(
+  code1 character varying
+)
+INHERITS ( qgis_test.base_table_good)
+WITH (
+  OIDS=FALSE
+);
+
+
+CREATE TABLE qgis_test.child_table2_good
+(
+  code2 character varying
+)
+INHERITS ( qgis_test.base_table_good)
+WITH (
+  OIDS=FALSE
+);
+
+INSERT INTO qgis_test.child_table_good (geom, code1) VALUES ('srid=4326;Point(0 0)'::geometry, 'child 1');
+INSERT INTO qgis_test.child_table_good (geom, code1) VALUES ('srid=4326;Point(1 1)'::geometry, 'child 2');
+
+
+INSERT INTO qgis_test.child_table2_good (geom, code2) VALUES ('srid=4326;Point(-1 -1)'::geometry, 'child2 1');
+INSERT INTO qgis_test.child_table2_good (geom, code2) VALUES ('srid=4326;Point(-1 1)'::geometry, 'child2 2');
+

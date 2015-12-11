@@ -930,7 +930,7 @@ QMimeData* QgsLayerTreeModel::mimeData( const QModelIndexList& indexes ) const
 {
   QList<QgsLayerTreeNode*> nodesFinal = indexes2nodes( indexes, true );
 
-  if ( nodesFinal.count() == 0 )
+  if ( nodesFinal.isEmpty() )
     return 0;
 
   QMimeData *mimeData = new QMimeData();
@@ -983,7 +983,7 @@ bool QgsLayerTreeModel::dropMimeData( const QMimeData* data, Qt::DropAction acti
     elem = elem.nextSiblingElement();
   }
 
-  if ( nodes.count() == 0 )
+  if ( nodes.isEmpty() )
     return false;
 
   if ( parent.isValid() && row == -1 )
@@ -1331,6 +1331,26 @@ QIcon QgsLayerTreeModel::legendIconEmbeddedInParent( QgsLayerTreeLayer* nodeLaye
 QList<QgsLayerTreeModelLegendNode*> QgsLayerTreeModel::layerLegendNodes( QgsLayerTreeLayer* nodeLayer )
 {
   return mLegend.value( nodeLayer ).activeNodes;
+}
+
+QgsLayerTreeModelLegendNode* QgsLayerTreeModel::findLegendNode( const QString& layerId, const QString& ruleKey ) const
+{
+  Q_FOREACH ( QgsLayerTreeLayer* layer, mLegend.keys() )
+  {
+    if ( layer->layerId() == layerId )
+    {
+      Q_FOREACH ( QgsLayerTreeModelLegendNode* legendNode, mLegend.value( layer ).activeNodes )
+      {
+        if ( legendNode->data( QgsLayerTreeModelLegendNode::RuleKeyRole ).toString() == ruleKey )
+        {
+          //found it!
+          return legendNode;
+        }
+      }
+    }
+  }
+
+  return 0;
 }
 
 void QgsLayerTreeModel::legendInvalidateMapBasedData()

@@ -20,6 +20,7 @@
 #include <qgsdatadefinedbutton.h>
 
 #include <QWidget>
+#include <QStandardItemModel>
 
 class QgsSymbolLayerV2;
 class QgsVectorLayer;
@@ -93,7 +94,18 @@ class GUI_EXPORT QgsSymbolLayerV2Widget : public QWidget
     Q_DECL_DEPRECATED virtual QString dataDefinedPropertyLabel( const QString &entryName );
 
   signals:
+    /**
+     * Should be emitted whenever configuration changes happened on this symbol layer configuration.
+     * If the subsymbol is changed, {@link symbolChanged()} should be emitted instead.
+     */
     void changed();
+    /**
+     * Should be emitted whenever the sub symbol changed on this symbol layer configuration.
+     * Normally {@link changed()} should be preferred.
+     *
+     * @see {@link changed()}
+     */
+    void symbolChanged();
 
   protected slots:
     void updateDataDefinedProperty();
@@ -611,5 +623,67 @@ class GUI_EXPORT QgsCentroidFillSymbolLayerV2Widget : public QgsSymbolLayerV2Wid
 
 };
 
+
+///@cond
+//not part of public API
+
+class QgsSvgListModel : public QAbstractListModel
+{
+    Q_OBJECT
+
+  public:
+    explicit QgsSvgListModel( QObject* parent );
+
+    // Constructor to create model for icons in a specific path
+    QgsSvgListModel( QObject* parent, const QString& path );
+
+    int rowCount( const QModelIndex & parent = QModelIndex() ) const override;
+
+    QVariant data( const QModelIndex & index, int role = Qt::DisplayRole ) const override;
+
+  protected:
+    QStringList mSvgFiles;
+};
+
+class QgsSvgGroupsModel : public QStandardItemModel
+{
+    Q_OBJECT
+
+  public:
+    explicit QgsSvgGroupsModel( QObject* parent );
+
+  private:
+    void createTree( QStandardItem* &parentGroup );
+};
+
+///@endcond
+
+#include "ui_qgsgeometrygeneratorwidgetbase.h"
+
+class QgsGeometryGeneratorSymbolLayerV2;
+
+class GUI_EXPORT QgsGeometryGeneratorSymbolLayerWidget : public QgsSymbolLayerV2Widget, private Ui::GeometryGeneratorWidgetBase
+{
+    Q_OBJECT
+
+  public:
+    QgsGeometryGeneratorSymbolLayerWidget( const QgsVectorLayer* vl, QWidget* parent = 0 );
+
+    /**
+     * Will be registered as factory
+     */
+    static QgsSymbolLayerV2Widget* create( const QgsVectorLayer* vl ) { return new QgsGeometryGeneratorSymbolLayerWidget( vl ); }
+
+    // from base class
+    virtual void setSymbolLayer( QgsSymbolLayerV2* layer ) override;
+    virtual QgsSymbolLayerV2* symbolLayer() override;
+
+  private:
+    QgsGeometryGeneratorSymbolLayerV2* mLayer;
+
+  private slots:
+    void updateExpression();
+    void updateSymbolType();
+};
 
 #endif
